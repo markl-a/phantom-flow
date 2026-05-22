@@ -1,0 +1,13 @@
+name: dependent_plugin
+version: 1.0.0
+author: AI Automation Framework Team
+description: Plugin that depends on base_plugin to demonstrate dependency resolution
+dependencies:
+  - base_plugin
+entry_point: Plugin
+compatible_versions:
+  - 1.0.0
+tags:
+  - example
+  - dependency
+  - demo
