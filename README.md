@@ -1,32 +1,21 @@
 # phantom-flow
 
-> **Event-driven, cluster-aware workflow engine on top of [phantom-mesh](https://github.com/markl-a/phantom-mesh).**
-> Self-hosted n8n / Zapier — Rust+Python native, AI-native, cross-device, 100% local-first.
+> **Self-hosted + cluster-aware + AI-native + cross-device workflow engine** on
+> top of [phantom-mesh](https://github.com/markl-a/phantom-mesh) — n8n / Zapier
+> 的本地化替代品,招聘對齊 鴻海 C3 / Modal / 中型 AI 新創,副業 NT$199-499/月
+> 自架 Pro tier。
 
-**Status:** `alpha` (M1 W2-4, 2026-05-22)
-Full spec: [`docs/projects/06-phantom-flow.md`](https://github.com/markl-a/phantom-mesh) in the phantom-mesh planning tree.
+![status: alpha · Tier 1](https://img.shields.io/badge/status-alpha%20%C2%B7%20Tier%201-orange)
+![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)
+[![phantom-mesh ecosystem](https://img.shields.io/badge/ecosystem-phantom--mesh-purple)](https://github.com/markl-a/phantom-mesh)
 
----
+## 一句話 niche
 
-## Why this repo exists
-
-This is one of the **14-point three-way wins** in the phantom-mesh roadmap
-(招聘 / 副業 / 人生 simultaneously):
-
-- **招聘**: positions me for AI Service / Modal / Together / 鴻海 C3 AI Service roles —
-  workflow-engine experience is high-signal.
-- **副業**: n8n self-hosted market is validated; NT$ 199-499/mo Pro tier + Hahow
-  course + premium templates are realistic paths.
-- **人生**: covers C4 (attention switching), C5 (job seek + side gigs), C7
-  (personal finance), C8 (parents' health) — automates the repetitive things.
-
-It is the **single highest-priority project** in the 7-project lineup because
-the two source repos below already self-identify as "phantom-mesh ecosystem
-layers", which makes the merge cost the lowest of all 7.
-
----
-
-## Niche vs incumbents
+n8n / Zapier / Make 都是 cloud-first + 不會 cluster dispatch;Temporal 是
+重量級 JVM;Apple Shortcuts 是 Apple-only;LangChain 不是 event-driven。
+**phantom-flow 是第一個 self-hosted + cluster-aware + AI-native + cross-device**
+workflow engine — 同一份 YAML 可以 dispatch 到你的 GPU 機、always-on Pi、或
+手機,Rust+Python 原生 + 100% local-first。
 
 | Competitor          | Their edge                  | Why phantom-flow exists                            |
 |---------------------|-----------------------------|----------------------------------------------------|
@@ -37,70 +26,94 @@ layers", which makes the merge cost the lowest of all 7.
 | **LangChain**       | LLM chaining                | Not event-driven; phantom-flow is                  |
 | **Apple Shortcuts** | Simple                      | Apple-only; phantom-flow runs on 5 OSes            |
 
-**Unique position:** the first **self-hosted + cluster-aware + AI-native +
-cross-device** workflow engine. Same YAML can be dispatched to your GPU box,
-your always-on Pi, or your phone.
+## Status (2026-05-22)
 
----
+- ✅ **Tier 1 shipped**:
+  - `phantom_flow/runner.py` — YAML flow executor (n8n-style) with
+    `--dry-run` planner
+  - `phantom_flow/llm_driver.py` — swaps LangChain LLM → phantom event
+    capture for one code path
+  - `flows/jobseek-daily.yaml` — **real daily-running flow** (cron 09:00)
+  - `flows/example-webhook.yaml` — declaration-only spec demo
+  - 兩個既有 repo subtree-merged: `ai_automation_framework/` (17+ automation
+    tools, RAG, agent framework, persistent memory) + `data_analysis/`
+    (Streamlit app, K-Means/DBSCAN/RFM/CLV, 377 pytest, multi-LLM cost
+    routing)
+- 🟡 **Tier 2 next**: 全面 LLM provider 改走 phantom-mesh provider trait
+  (現在只 1 條 code path);memory backend SQLite/Redis → phantom FTS5;
+  3+ 個真實 flow(現只 1 個 jobseek-daily)。
+- 🟡 **Tier 3 (M2-M3, ~2026-07)**: visual flow editor、marketplace templates、
+  健康 + 學習 flow。
 
-## What is in this repo today (alpha)
-
-```
-phantom-flow/
-├── README.md
-├── LICENSE                              # Apache-2.0
-├── .gitignore
-├── phantom_flow/                        # the wrapper layer (NEW, this repo)
-│   ├── __init__.py
-│   ├── runner.py                        # YAML flow executor (n8n-style)
-│   └── llm_driver.py                    # swaps LangChain LLM → phantom event capture
-├── flows/
-│   ├── jobseek-daily.yaml               # REAL daily-running flow (cron 09:00)
-│   └── example-webhook.yaml             # declaration-only spec demo
-├── ai_automation_framework/             # SUBTREE-MERGED from Automation_with_Agent
-│   ├── core/, tools/, rag/, agents/, workflows/, llm/, integrations/, plugins/
-│   └── (17+ automation tools, RAG, agent framework, persistent memory)
-├── data_analysis/                       # SUBTREE-MERGED from Data-Analysis-with-Agents
-│   ├── app.py (Streamlit), kaggle_solutions/, notebooks/, models/, examples/
-│   └── (K-Means/DBSCAN/RFM/CLV, 377 pytest, multi-LLM cost routing)
-└── docs/
-    └── 2026-05-22-tier1-initial-dev.md  # what landed + what's deferred
-```
-
-> The existing scaffold at `~/Documents/GitHub/hailmary/phantom-flow/` is
-> **not** this repo — it carries a launchd cron that ships a daily heartbeat
-> and stays untouched. This top-level repo is where the M1 W2-4 substantial
-> merge lives.
-
----
-
-## Run the one real flow (dry-run)
+## 30-second quickstart
 
 ```bash
+git clone https://github.com/markl-a/phantom-flow
+cd phantom-flow
+
+# 跑 jobseek-daily flow 的 dry-run(印 trigger + pipeline + outbound,不碰
+# 網路 / 檔案)
 python -m phantom_flow.runner flows/jobseek-daily.yaml --dry-run
+
+# 跑真實版(需 merged subtree code + Python deps)
+python -m phantom_flow.runner flows/jobseek-daily.yaml
 ```
 
-Prints the trigger, the pipeline plan, and the outbound actions without
-touching the network or filesystem. Drop `--dry-run` to actually execute
-(needs the merged subtree code + Python deps).
+## Architecture (within phantom-mesh ecosystem)
 
----
+phantom-flow 是 **P2 分身連線 + P3 進化網** 的執行層:把 phantom-mesh 的
+event capture / FTS5 memory / provider trait 串成可重複的 workflow,並用
+cluster-aware dispatch 把重負載送到對的 mesh 節點。
 
-## Roadmap (the things this Tier 1 dev does NOT yet do)
+```
+YAML flow (flows/*.yaml)
+   ↓
+phantom_flow.runner  (n8n-style executor + dry-run planner)
+   ↓
+phantom_flow.llm_driver  →  phantom-mesh provider trait
+   ↓                         (Claude / Gemini / local / Modal spill)
+trigger (cron / webhook / event)
+   ↓
+dispatch decision  →  Mac M-series  |  GPU node  |  always-on Pi  |  phone
+   ↓
+phantom event capture  →  FTS5 memory  →  phantom-companion ⑦ 觀察
+```
 
-- **Full LLM driver swap**: currently `phantom_flow/llm_driver.py` wraps
-  `phantom event capture` for one code path. The LangChain call sites inside
-  `ai_automation_framework/` are still LangChain-direct — spec wants
-  them all routed through the phantom provider trait.
-- **Memory backend swap**: spec says SQLite/Redis → phantom FTS5. Not done.
-- **Visual flow editor**: deferred to M2+.
-- **Marketplace templates**: deferred to M2+.
-- **3+ real flows**: 1 today (`jobseek-daily.yaml`). Health + study flows still TODO.
+Pillars served: **P2** (分身連線 — workflow 跨裝置 dispatch)、**P3** (進化網
+— 每次 flow 執行回寫 FTS5,讓 ⑦ companion 學模式)、**P1** (跨平台 — 5 OSes)。
 
----
+## Target users (recruiter / co-builder angle)
+
+- **Recruiters (招聘)**: 鴻海 C3 AI Service / Modal / Together / 中型 AI
+  新創。Workflow engine 經驗在 2026 是 high-signal: 證明能做 distributed
+  systems + DAG scheduler + LLM cost routing + 真實 production cron。Rust +
+  Python 雙語、AI-native 是 differentiator。
+- **副業 angle (NT$ 199-499 / 月 Pro tier)**: n8n self-hosted 市場已被驗
+  證,中文圈 + AI-native + 跨裝置這個位置目前是空的。+ Hahow 課程「自架
+  phantom-flow 取代 Zapier」+ premium template marketplace。
+- **人生 (life)**: 直接吃 C4 (注意力切換)、C5 (求職 + 副業)、C7 (個人
+  財務)、C8 (家人健康) — 重複的事 automate 掉。
+- **Co-builders**: 想要 self-hosted + AI-native 工作流的 indie hacker /
+  homelab 玩家;跨裝置 dispatch 是其他 OSS 沒有的差異化。
+
+## Roadmap (per master plan)
+
+- 詳細設計: [`docs/06-phantom-flow.md`](docs/)
+- 七專案總圖: [phantom-mesh planning tree](https://github.com/markl-a/phantom-mesh)
+
+3-bullet:
+
+1. **M2** — 全面 provider trait、FTS5 memory backend、3+ flows、visual editor MVP。
+2. **M3** — marketplace、premium templates、健康 + 學習 flow。
+3. **Post-M3** — NT$199-499/月 Pro tier 公開上線、Hahow 課程。
+
+## Sibling scaffold (do not confuse)
+
+`~/Documents/GitHub/hailmary/phantom-flow/` 是更早的 launchd heartbeat
+(每日 ping),保留不動。本 repo 是 M1 W2-4 substantial merge 的所在地。
 
 ## License
 
-Apache-2.0. The two subtree-merged repos arrive under their original MIT
-license (`ai_automation_framework/LICENSE`, `data_analysis/LICENSE`). Both
-licenses are compatible.
+Apache-2.0. © 2026 Mark Lai ([markl-a](https://github.com/markl-a)). 兩個
+subtree-merged repo 原始為 MIT (`ai_automation_framework/LICENSE`,
+`data_analysis/LICENSE`),與 Apache-2.0 相容。
