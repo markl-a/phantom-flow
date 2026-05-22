@@ -13,4 +13,4 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install pyyaml
-      - run: python -c "from phantom_flow.runner import FlowRunner; f = FlowRunner(); print('phantom-flow runner import ok')"
+      - run: python -c "from phantom_flow.runner import load_flow, run_flow; print('phantom-flow runner import ok')"
