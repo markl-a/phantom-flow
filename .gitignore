@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg
+
+# Virtualenvs
+.venv/
+venv/
+env/
+.python-version
+
+# Node / web UI (when it lands)
+node_modules/
+.next/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local secrets / runtime state
+.env
+.env.local
+*.log
+*.sqlite3
+*.db
+data/cache/
+~/.phantom-mesh/  # not literal, just a reminder
+
+# phantom-flow runtime
+flows/*.local.yaml
+runs/
