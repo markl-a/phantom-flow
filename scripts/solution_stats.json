@@ -1,0 +1,26 @@
+{
+  "total": 1052,
+  "by_category": {
+    "01_structured_data": 54,
+    "02_time_series": 70,
+    "03_nlp": 54,
+    "04_recommendation": 59,
+    "05_computer_vision": 53,
+    "06_clustering": 63,
+    "07_special_domains": 68,
+    "08_deep_learning": 68,
+    "09_audio_signal": 63,
+    "10_anomaly_detection": 62,
+    "11_graph_networks": 62,
+    "12_geospatial": 62,
+    "13_feature_engineering": 67,
+    "14_ensemble_methods": 67,
+    "15_bayesian_methods": 62,
+    "16_optimization": 62,
+    "17_multimodal": 56
+  },
+  "files": {
+    "solution_files": 1052,
+    "readme_files": 1052
+  }
+}
