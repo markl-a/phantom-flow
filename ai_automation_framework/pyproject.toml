@@ -1,0 +1,224 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-automation-framework"
+version = "0.1.0"
+description = "A comprehensive framework for LLM and AI automation from basics to advanced"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "AI Automation Framework Contributors"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["ai", "llm", "automation", "openai", "anthropic", "langchain", "rag", "agents"]
+
+dependencies = [
+    "openai>=1.50.0,<2.0.0",
+    "anthropic>=0.39.0,<1.0.0",
+    "langchain>=0.3.0,<1.0.0",
+    "chromadb>=0.5.0,<1.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "pydantic>=2.9.0,<3.0.0",
+    "rich>=13.9.0,<14.0.0",
+    "loguru>=0.7.2,<1.0.0",
+    "requests>=2.32.0,<3.0.0",
+    "aiohttp>=3.10.0,<4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=4.1.0",
+    "black>=24.8.0",
+    "ruff>=0.3.0",
+    "isort>=5.13.0",
+    "mypy>=1.11.0",
+    "pre-commit>=3.6.0",
+]
+
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+
+rag = [
+    "langchain-community>=0.3.0,<1.0.0",
+    "langchain-openai>=0.2.0,<1.0.0",
+    "langchain-anthropic>=0.2.0,<1.0.0",
+    "sentence-transformers>=3.0.0,<4.0.0",
+    "faiss-cpu>=1.9.0,<2.0.0",
+    "pypdf>=5.0.0,<6.0.0",
+    "python-docx>=1.1.0,<2.0.0",
+    "tiktoken>=0.8.0,<1.0.0",
+]
+
+automation = [
+    "beautifulsoup4>=4.12.0",
+    "selenium>=4.15.0",
+    "playwright>=1.40.0",
+    "pillow>=10.1.0",
+    "openpyxl>=3.1.0",
+    "pandas>=2.2.0",
+    "schedule>=1.2.0",
+    "pytesseract>=0.3.10",
+]
+
+cloud = [
+    "boto3>=1.34.0",
+    "google-cloud-storage>=2.14.0",
+    "azure-storage-blob>=12.19.0",
+    "oss2>=2.18.0",
+]
+
+media = [
+    "opencv-python>=4.9.0",
+    "moviepy>=1.0.3",
+    "ffmpeg-python>=0.2.0",
+    "google-cloud-speech>=2.24.0",
+    "google-cloud-texttospeech>=2.16.0",
+]
+
+web = [
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "websockets>=12.0",
+    "graphene>=3.3",
+    "flask>=3.0.0",
+]
+
+workflow = [
+    "temporalio>=1.5.0",
+    "prefect>=2.14.0",
+    "celery[redis]>=5.3.0",
+]
+
+monitoring = [
+    "prometheus-client>=0.19.0",
+    "psutil>=5.9.0",
+    "redis>=5.0.0",
+]
+
+ui = [
+    "streamlit>=1.39.0",
+    "typer>=0.12.0",
+]
+
+all = [
+    "ai-automation-framework[dev,rag,automation,cloud,media,web,workflow,monitoring,ui]",
+]
+
+[project.urls]
+Homepage = "https://github.com/markl-a/Automation_with_AI"
+Repository = "https://github.com/markl-a/Automation_with_AI"
+Documentation = "https://github.com/markl-a/Automation_with_AI#readme"
+Issues = "https://github.com/markl-a/Automation_with_AI/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ai_automation_framework*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+known_first_party = ["ai_automation_framework"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__.py are ok
+"tests/*" = ["B", "C"]    # less strict for tests
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "build",
+    "dist",
+    "venv",
+    ".venv",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "requires_api_key: marks tests that require real API keys",
+]
+
+[tool.coverage.run]
+source = ["ai_automation_framework"]
+branch = true
+omit = [
+    "tests/*",
+    "examples/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

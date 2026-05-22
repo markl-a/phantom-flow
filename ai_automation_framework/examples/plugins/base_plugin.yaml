@@ -1,0 +1,12 @@
+name: base_plugin
+version: 1.0.0
+author: AI Automation Framework Team
+description: Base plugin providing common utilities for other plugins
+dependencies: []
+entry_point: Plugin
+compatible_versions:
+  - 1.0.0
+tags:
+  - base
+  - utilities
+  - core

@@ -1,0 +1,22 @@
+name: example_plugin
+version: 1.0.0
+author: AI Automation Framework Team
+description: Example plugin demonstrating the plugin system capabilities
+dependencies: []
+entry_point: Plugin
+compatible_versions:
+  - 1.0.0
+  - 1.1.0
+tags:
+  - example
+  - demo
+  - tutorial
+config_schema:
+  type: object
+  properties:
+    message:
+      type: string
+      default: "Hello from ExamplePlugin"
+    enabled:
+      type: boolean
+      default: true
