@@ -1,0 +1,29 @@
+# phantom-flow example: webhook-triggered flow (DECLARATION ONLY)
+#
+# This file documents the shape of a webhook flow for the spec demo. The
+# Tier 1 runner does NOT yet implement an HTTP listener — only cron + manual
+# invocations execute end-to-end. A future M1 milestone wires this into
+# phantom-mesh's HTTP surface so POSTs to /hooks/<name> dispatch the flow.
+name: example-webhook
+version: 0
+status: declaration-only      # consumed by spec / docs, not by runner
+
+trigger:
+  type: webhook
+  url: "/hooks/example-webhook"
+  method: POST
+  auth: bearer                # token comes from phantom-mesh /onboarding
+
+pipeline:
+  - id: parse_payload
+    block: pipeline.subprocess
+    cmd: "echo '${event.body}' | jq -r '.intent'"
+  - id: route
+    block: pipeline.if
+    condition: "${parse_payload.stdout} == new-job-lead"
+
+outbound:
+  - block: actions.log_append
+    when: "${route.true}"
+    path: "~/.phantom-mesh/logs/phantom-flow/webhook-${date.today}.log"
+    line: "[example-webhook] intent=${parse_payload.stdout} ts=${date.now}"

@@ -1,0 +1,58 @@
+# phantom-flow real flow: daily job-seek scan
+#
+# Mirrors and extends the heartbeat scrape that already runs out of
+# ~/Documents/GitHub/hailmary/phantom-flow/scripts/heartbeat-daily.sh —
+# but pipes the body through a filter + LLM summarize + log append.
+#
+# Trigger fires daily at 09:00 local. The hailmary scaffold's launchd plist
+# stays separate (it owns the cron); this YAML is what the runner consumes
+# either on-demand (`python -m phantom_flow.runner ... --dry-run`) or when
+# wired into the phantom-mesh scheduler.
+name: jobseek-daily
+version: 1
+description: |
+  Daily 09:00 scan of a public 104.com.tw search page. Filters for AI
+  keywords, asks the phantom LLM driver to summarise, logs results.
+
+trigger:
+  type: cron
+  schedule: "0 9 * * *"      # 09:00 local, every day
+
+pipeline:
+  - id: scrape_104
+    block: tools.http_get
+    url: "https://www.104.com.tw/jobs/search/?keyword=AI&order=15"
+    user_agent: "Mozilla/5.0 (phantom-flow jobseek; +https://github.com/markl-a/phantom-flow)"
+    max_bytes: 51200
+    timeout: 30
+
+  - id: filter_ai_only
+    block: pipeline.filter
+    input: "${scrape_104.body}"
+    keywords: "AI, machine learning, LLM, agent, RAG, MLOps"
+
+  - id: count_hits
+    block: pipeline.regex_count
+    input: "${scrape_104.body}"
+    pattern: "AI"
+
+  - id: gate
+    block: pipeline.if
+    condition: "${count_hits.value} > 0"
+
+  - id: llm_summarize
+    block: pipeline.llm_summarize
+    input: "${scrape_104.body}"
+    prompt: |
+      You are a job-seeker assistant. Given raw HTML snippets of a 104
+      jobs page filtered for AI roles, list up to 3 standout postings as
+      Markdown bullets in zh-TW. Keep under 60 words.
+
+outbound:
+  - block: actions.log_append
+    when: "${gate.true}"
+    path: "~/.phantom-mesh/logs/phantom-flow/${date.today}.log"
+    line: "[jobseek-daily] hits=${count_hits.value} matched=${filter_ai_only.matched_count} llm=${llm_summarize.backend} summary=${llm_summarize.summary}"
+
+  - block: actions.stdout
+    line: "[jobseek-daily ${date.now}] hits=${count_hits.value} matched_kw=${filter_ai_only.matched}"
