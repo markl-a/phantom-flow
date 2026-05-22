@@ -1,0 +1,8 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1779466485,"idle_time_limit":2.0,"command":"/tmp/demo-scripts/flow.sh","title":"phantom-flow Tier 1 demo (YAML pipeline runner)","env":{"SHELL":"/bin/zsh"}}
+[0.518, "o", "$ python -m phantom_flow.runner flows/jobseek-daily.yaml --dry-run\r\n"]
+[1.140, "o", "phantom-flow runner :: jobseek-daily.yaml\r\n  name    = jobseek-daily\r\n  version = 1\r\n  mode    = DRY RUN\r\n"]
+[0.000, "o", "  llm_cli = <not installed>\r\n"]
+[0.000, "o", "--- plan ---\r\n  trigger: cron (0 9 * * *)\r\n  pipeline.scrape_104 -> tools.http_get\r\n  pipeline.filter_ai_only -> pipeline.filter\r\n  pipeline.count_hits -> pipeline.regex_count\r\n  pipeline.gate -> pipeline.if\r\n  pipeline.llm_summarize -> pipeline.llm_summarize\r\n  outbound -> actions.log_append  [gated by ${gate.true}]\r\n  outbound -> actions.stdout\r\n"]
+[1.016, "o", "\r\n"]
+[0.000, "o", "# phantom-flow: cron-triggered jobseek pipeline parsed, 6 steps planned\r\n"]
+[2.010, "x", "0"]
