@@ -1,5 +1,7 @@
 # phantom-flow
 
+[![CI](https://github.com/markl-a/phantom-flow/actions/workflows/ci.yml/badge.svg)](https://github.com/markl-a/phantom-flow/actions/workflows/ci.yml)
+
 > **Self-hosted + cluster-aware + AI-native + cross-device workflow engine** on
 > top of [phantom-mesh](https://github.com/markl-a/phantom-mesh) — n8n / Zapier
 > 的本地化替代品,招聘對齊 鴻海 C3 / Modal / 中型 AI 新創,副業 NT$199-499/月
