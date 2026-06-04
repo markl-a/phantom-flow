@@ -115,6 +115,80 @@ def _block_filter(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
             "passes": len(hits) > 0}
 
 
+_YT_ID_RE = re.compile(
+    r"(?:v=|/shorts/|/embed/|youtu\.be/|/v/)([A-Za-z0-9_-]{11})"
+)
+
+
+def _youtube_video_id(url_or_id: str) -> Optional[str]:
+    """Extract an 11-char YouTube video id from a URL or bare id."""
+    s = (url_or_id or "").strip()
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", s):
+        return s
+    m = _YT_ID_RE.search(s)
+    return m.group(1) if m else None
+
+
+def _block_youtube_transcript(spec: Dict[str, Any],
+                              _ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Fetch a YouTube video's transcript via youtube_transcript_api.
+
+    spec keys:
+      url           : YouTube URL or bare 11-char video id (required)
+      languages     : list of preferred language codes (default ["en"])
+      cache_file    : path to a bundled sample transcript used as a fallback
+                      if the live fetch fails (so demos still run on real text)
+
+    Returns a dict with `text`, `text_len`, `source` ("live" | "cached"),
+    `video_id`, and `error` (set when live fetch failed).
+    """
+    url = spec.get("url", "")
+    video_id = _youtube_video_id(url)
+    languages = spec.get("languages") or ["en"]
+    if isinstance(languages, str):
+        languages = [s.strip() for s in languages.split(",") if s.strip()]
+
+    error: Optional[str] = None
+    if not video_id:
+        error = f"could not parse a YouTube video id from {url!r}"
+    else:
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            fetched = YouTubeTranscriptApi().fetch(video_id, languages=languages)
+            text = " ".join(
+                snip.text for snip in fetched if snip.text.strip()
+            ).strip()
+            if text:
+                print(f"  [youtube_transcript] live fetch OK "
+                      f"({video_id}, {len(text)} chars)", file=sys.stderr)
+                return {"text": text, "text_len": len(text),
+                        "source": "live", "video_id": video_id, "error": ""}
+            error = "transcript was empty"
+        except ImportError as exc:  # pragma: no cover
+            error = f"youtube_transcript_api not installed: {exc}"
+        except Exception as exc:  # noqa: BLE001 - many API-specific subclasses
+            error = f"{type(exc).__name__}: {exc}"
+
+    # ---- cached fallback so the demo still summarises REAL transcript text ----
+    cache_file = spec.get("cache_file")
+    if cache_file:
+        cache_path = Path(os.path.expanduser(cache_file))
+        if not cache_path.is_absolute():
+            cache_path = (Path(__file__).resolve().parent.parent
+                          / cache_file)
+        if cache_path.exists():
+            text = cache_path.read_text(encoding="utf-8").strip()
+            print(f"  [youtube_transcript] live fetch failed "
+                  f"({error}); using CACHED transcript {cache_path.name} "
+                  f"({len(text)} chars)", file=sys.stderr)
+            return {"text": text, "text_len": len(text), "source": "cached",
+                    "video_id": video_id or "", "error": error or ""}
+
+    raise RuntimeError(
+        f"youtube_transcript failed and no usable cache_file: {error}"
+    )
+
+
 def _block_llm_summarize(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
     from phantom_flow.llm_driver import PhantomLLM
     llm = PhantomLLM()
@@ -172,6 +246,7 @@ def _action_stdout(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]
 
 BLOCK_REGISTRY: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]] = {
     "tools.http_get": _block_http_get,
+    "tools.youtube_transcript": _block_youtube_transcript,
     "pipeline.regex_count": _block_regex_count,
     "pipeline.filter": _block_filter,
     "pipeline.llm_summarize": _block_llm_summarize,

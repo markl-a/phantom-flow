@@ -58,20 +58,15 @@ class PhantomLLM:
         if not self.available:
             return self._stub(prompt, system)
 
-        # Invoke: `phantom event capture --kind llm.complete --json -`
-        # The exact subcommand surface is stabilising; we use a defensive
-        # form that the phantom CLI is expected to accept (kind + JSON
-        # payload on stdin, JSON line on stdout).
-        payload = {
-            "model_hint": self.model_hint,
-            "system": system or "",
-            "prompt": prompt,
-        }
+        # Invoke the real provider-routed completion via `phantom exec`.
+        # This mirrors the working pattern in the ai-feed repo
+        # (summarize.py): shell `phantom exec <prompt>` and return stdout.
+        # The previous `phantom event capture --kind llm.complete` form used
+        # an unknown flag and silently fell back to a fake stub summary.
+        full_prompt = f"{system}\n\n{prompt}" if system else prompt
         try:
             proc = subprocess.run(
-                [self._cli, "event", "capture",
-                 "--kind", "llm.complete", "--json", "-"],
-                input=json.dumps(payload),
+                [self._cli, "exec", full_prompt],
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
@@ -80,16 +75,30 @@ class PhantomLLM:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return self._stub(prompt, system)
 
-        if proc.returncode != 0 or not proc.stdout.strip():
+        text = self._clean_stdout(proc.stdout)
+        if proc.returncode != 0 or not text:
             return self._stub(prompt, system)
 
-        try:
-            out = json.loads(proc.stdout.strip().splitlines()[-1])
-            text = out.get("text") or out.get("completion") or ""
-            return LLMResult(text=text, backend="phantom", raw=proc.stdout)
-        except (json.JSONDecodeError, IndexError):
-            return LLMResult(text=proc.stdout.strip(), backend="phantom",
-                             raw=proc.stdout)
+        return LLMResult(text=text, backend="phantom", raw=proc.stdout)
+
+    @staticmethod
+    def _clean_stdout(stdout: str) -> str:
+        """Drop provider-failover noise lines that `phantom exec` prints.
+
+        e.g. ``  [provider gemini] unavailable, trying next — rate limit``.
+        The real completion is whatever remains.
+        """
+        if not stdout:
+            return ""
+        kept = []
+        for line in stdout.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("[provider ") or (
+                "] unavailable, trying next" in stripped
+            ):
+                continue
+            kept.append(line)
+        return "\n".join(kept).strip()
 
     def _stub(self, prompt: str, system: Optional[str]) -> LLMResult:
         head = (prompt or "").splitlines()[0] if prompt else ""

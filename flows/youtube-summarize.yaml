@@ -1,0 +1,32 @@
+name: youtube-summarize
+version: 1
+# Fetch a YouTube video's transcript (real captions via youtube_transcript_api)
+# and summarise it with a real phantom-routed LLM call (`phantom exec`).
+#
+# Run:
+#   YT_URL="https://www.youtube.com/watch?v=8S0FDjFBj8o" \
+#     python3 -m phantom_flow.runner flows/youtube-summarize.yaml --json
+#
+# If YouTube blocks/rate-limits the live fetch (region/IP), the transcript
+# block falls back to the bundled cached sample so the demo still produces a
+# REAL LLM summary of REAL transcript text (logged as "cached").
+trigger:
+  type: manual
+
+pipeline:
+  - id: transcript
+    block: tools.youtube_transcript
+    url: "${env.YT_URL}"
+    languages: ["en"]
+    cache_file: "flows/samples/youtube-transcript-sample.txt"
+
+  - id: summary
+    block: pipeline.llm_summarize
+    input: "${transcript.text}"
+    prompt: "Summarise this YouTube video transcript in 3 concise bullet points:"
+
+outbound:
+  - block: actions.stdout
+    line: "transcript source=${transcript.source} len=${transcript.text_len}"
+  - block: actions.stdout
+    line: "summary (${summary.backend}):\n${summary.summary}"
