@@ -14,7 +14,7 @@ build/
 *.egg
 
 # Virtualenvs
-.venv/
+.venv*/
 venv/
 env/
 .python-version
