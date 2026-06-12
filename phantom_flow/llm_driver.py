@@ -68,7 +68,8 @@ class PhantomLLM:
             proc = subprocess.run(
                 [self._cli, "exec", full_prompt],
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=self.timeout,
                 check=False,
             )
