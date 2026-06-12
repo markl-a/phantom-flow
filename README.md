@@ -53,7 +53,7 @@ workflow engine — 同一份 YAML 可以 dispatch 到你的 GPU 機、always-on
   - `flows/example-webhook.yaml` — declaration-only spec demo
   - 兩個既有 repo subtree-merged: `ai_automation_framework/` (17+ automation
     tools, RAG, agent framework, persistent memory) + `data_analysis/`
-    (Streamlit app, K-Means/DBSCAN/RFM/CLV, 377 pytest, multi-LLM cost
+    (Streamlit app, K-Means/DBSCAN/RFM/CLV, its own pytest suite, multi-LLM cost
     routing)
 - 🟡 **Tier 2 next**: 全面 LLM provider 改走 phantom-mesh provider trait
   (現在只 1 條 code path);memory backend SQLite/Redis → phantom FTS5;
