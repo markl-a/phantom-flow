@@ -33,7 +33,7 @@ class LLMResult:
 
 
 class PhantomLLM:
-    """Minimal wrapper around `phantom event capture`.
+    """Minimal wrapper around `phantom exec`.
 
     The phantom-mesh CLI exposes provider-routed LLM calls through its event
     system. We invoke it as a subprocess so this driver has zero Python

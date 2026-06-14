@@ -31,7 +31,7 @@
 
 ## 5. 待辦
 - 🔴 `llm_driver` → `phantom exec`（接通 LLM，現永遠 stub）。
-- 🔴 引擎**零測試** → 補 runner / llm_driver 測試。
+- 🟢 引擎測試已補（`tests/test_runner.py` 涵蓋 runner / llm_driver，pytest 全綠）。
 - 🟡 逐步把 vendored 工具包成 block（未來整合，按需求挑）。
 - 🟡 README 對齊（vendored / 整合中，別吹未整合的工具數）。
 - 🟢 cluster-aware dispatch block（spec 目標）。
