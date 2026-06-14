@@ -1,8 +1,14 @@
 # phantom-flow Tier 1 initial dev — 2026-05-22
 
-> One of the **14-point three-way wins**; M1 W2-4 in the master plan. Highest
-> priority of the 7 projects because two source repos already self-identify
-> as "phantom-mesh ecosystem layers", so the merge cost is the lowest.
+> **Historical dev-log.** The `ai_automation_framework/` and `data_analysis/`
+> subtrees described below were **removed from the repo on 2026-06-14** — they
+> were never imported by the engine (`phantom_flow/`). This note is kept for
+> provenance only; the source repos remain at the URLs cited below if anyone
+> wants to re-vendor them. The engine itself is unaffected.
+
+> One of the **14-point three-way wins**; M1 W2-4 in the master plan. Two
+> source repos self-identified as "phantom-mesh ecosystem layers", which is why
+> they were originally merged in.
 
 ## What got merged in
 

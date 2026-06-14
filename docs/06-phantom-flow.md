@@ -1,7 +1,13 @@
 # ⑥ phantom-flow
 
-> **Event-driven 跨服務工作流引擎,跑在 phantom-mesh 上,直接 merge 自 Automation_with_Agent + Data-Analysis-with-Agents**
-> 招聘 + 副業 + 應用三贏的項目,改裝資產最完整
+> **Aspirational design doc / master-plan spec — NOT a description of the
+> current code.** As of 2026-06-14 the engine is a ~500-LOC local-first YAML
+> runner (`phantom_flow/`) with native blocks: `http_get`, `regex_count`,
+> `filter`, `if`, `subprocess`, `llm_summarize`. It is **not** cluster-aware,
+> event-driven, or cross-device, and the `ai_automation_framework/` +
+> `data_analysis/` subtrees referenced below have been **removed** (they were
+> never imported by the engine). Everything past this banner is a future plan,
+> not a shipped feature. See `README.md` for the honest current state.
 
 ## 一句話定位
 

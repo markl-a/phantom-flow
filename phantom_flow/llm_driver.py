@@ -1,13 +1,8 @@
 """phantom-mesh LLM driver.
 
-Spec calls for swapping the LangChain LLM client (currently used inside
-`ai_automation_framework/llm/`) for the phantom-mesh provider trait, accessed
-via the `phantom event capture` CLI.
-
-This module is the first step of that swap: a minimal driver that any
-pipeline block in `phantom_flow.runner` can call without pulling in
-LangChain. The merged framework's own call sites still use LangChain — that
-deeper swap is tracked in `docs/2026-05-22-tier1-initial-dev.md`.
+A minimal driver that any pipeline block in `phantom_flow.runner` can call
+to get a text completion. It shells out to the `phantom` CLI's provider-routed
+`phantom exec` command, so this module has no Python LLM-SDK dependency.
 
 Usage::
 

@@ -1,10 +1,14 @@
-# phantom-flow — DESIGN（檢查 + 定位，2026-06-02）
+# phantom-flow — DESIGN（檢查 + 定位，2026-06-02；2026-06-14 更新）
 
-> event-driven、cluster-aware workflow engine on phantom-mesh（self-hosted n8n/Zapier）。
+> minimal local-first YAML workflow runner（~500 行，n8n 風格）。**不是**
+> cluster-aware / event-driven / cross-device——那些只是下方第 4 節的未來計畫。
+
+> **2026-06-14 更新**：`ai_automation_framework/`（~6 萬行）+ `data_analysis/`
+> （~4 萬行）兩個 vendored 子樹**已從 repo 移除**——引擎從未 import 它們。下方
+> 第 4 節「未來整合」的內容因此純屬計畫;真要用再從原始 repo re-vendor。
 
 ## 1. 真實結構
-- **引擎本體 `phantom_flow/`（~413 行）**：`runner.py`（YAML flow runner + blocks）、`llm_driver.py`（phantom LLM 包裝）、`__init__`。
-- **`ai_automation_framework/`（~6 萬行）+ `data_analysis/`（~4 萬行）= merge 進來的來源 repo**。
+- **引擎本體 `phantom_flow/`（~500 行）**：`runner.py`（YAML flow runner + blocks）、`llm_driver.py`（phantom LLM 包裝）、`__init__`。
 
 ## 2. 核心功能 + 入口
 `runner.py` 跑 YAML flow，現有 blocks：`http_get / regex_count / filter / llm_summarize / if / subprocess`。flows/：`example-webhook.yaml`、`jobseek-daily.yaml`。

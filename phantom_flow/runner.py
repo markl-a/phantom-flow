@@ -16,10 +16,10 @@ A flow is a YAML file with this shape::
         when: "${step.field}"    # optional gate
         ...action-specific keys
 
-Each `block` resolves through `BLOCK_REGISTRY`. Heavy blocks (LLM, scrape,
-data-analysis) shell out to the subtree-merged framework rather than reimport
-its Python directly — keeps the wrapper light and lets the LLM driver swap
-happen incrementally.
+Each `block` resolves through `BLOCK_REGISTRY`. The `pipeline.subprocess`
+block is an escape hatch for shelling out to external commands; the LLM
+block routes through `phantom_flow.llm_driver` (falling back to a stub when
+the `phantom` CLI is unavailable).
 
 Run::
 
@@ -218,7 +218,7 @@ def _block_if(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _block_subprocess(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """Escape hatch for heavy steps that live inside the merged subtree."""
+    """Escape hatch for shelling out to an external command."""
     cmd = spec["cmd"]
     if isinstance(cmd, str):
         cmd = ["bash", "-lc", cmd]
