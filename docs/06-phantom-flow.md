@@ -1,6 +1,11 @@
 # ⑥ phantom-flow
 
-> **Event-driven 跨服務工作流引擎,跑在 phantom-mesh 上,直接 merge 自 Automation_with_Agent + Data-Analysis-with-Agents**
+> ⚠️ **這是原始「願景 / spec」文件，不是 as-built 描述。** 下文許多功能
+> （event-driven、cluster-aware、視覺化編輯器、30+ 工具、5 OS、webhook listener）
+> 為**未實作的目標**。引擎現況請看 [`../README.md`](../README.md)；目標 vs 現實的
+> 誠實對照看 [`../ROADMAP.md`](../ROADMAP.md)。
+
+> **（願景）Event-driven 跨服務工作流引擎,跑在 phantom-mesh 上,直接 merge 自 Automation_with_Agent + Data-Analysis-with-Agents**
 > 招聘 + 副業 + 應用三贏的項目,改裝資產最完整
 
 ## 一句話定位
