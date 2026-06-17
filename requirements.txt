@@ -1,0 +1,12 @@
+# phantom-flow engine — CORE runtime dependencies ONLY.
+#
+# The engine (phantom_flow/) is deliberately near-stdlib. The only hard
+# runtime dependency is PyYAML, used to parse flow files. Everything else
+# the runner needs (argparse, json, re, subprocess, urllib, ...) is stdlib.
+#
+# Optional features live behind extras in pyproject.toml:
+#   pip install -e ".[youtube]"   # adds youtube_transcript_api
+#
+# The vendored subtrees (ai_automation_framework/, data_analysis/) carry
+# their OWN requirements and are NOT part of the engine's dependency surface.
+PyYAML>=6.0

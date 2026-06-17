@@ -1,17 +1,33 @@
-# phantom-flow — DESIGN（檢查 + 定位，2026-06-02）
+# phantom-flow — DESIGN（檢查 + 定位，更新 2026-06-17）
 
-> event-driven、cluster-aware workflow engine on phantom-mesh（self-hosted n8n/Zapier）。
+> A small **local-first YAML workflow runner** on top of phantom-mesh.
+>
+> ⚠️ 誠實標註：本引擎**目前不是** event-driven、也**不是** cluster-aware。那些是
+> 路線圖目標（見 [`ROADMAP.md`](ROADMAP.md)），不是已實作功能。早期文件把它們
+> 當成既有差異化在吹，已在此修正。
 
 ## 1. 真實結構
-- **引擎本體 `phantom_flow/`（~413 行）**：`runner.py`（YAML flow runner + blocks）、`llm_driver.py`（phantom LLM 包裝）、`__init__`。
-- **`ai_automation_framework/`（~6 萬行）+ `data_analysis/`（~4 萬行）= merge 進來的來源 repo**。
+- **引擎本體 `phantom_flow/`（~750 行，near-stdlib，唯一硬依賴 PyYAML）**：
+  `runner.py`（YAML loader + `${...}` 變數替換 + block registry + schema 驗證 +
+  run-record + CLI）、`llm_driver.py`（phantom `exec` 包裝 + stub fallback）、`__init__`。
+- **`ai_automation_framework/` + `data_analysis/` = subtree-merge 進來的來源 repo**，
+  **引擎不 import**（見 §4）。
 
 ## 2. 核心功能 + 入口
-`runner.py` 跑 YAML flow，現有 blocks：`http_get / regex_count / filter / llm_summarize / if / subprocess`。flows/：`example-webhook.yaml`、`jobseek-daily.yaml`。
+`runner.py` 跑 YAML flow。現有 9 個 native blocks：
+`tools.http_get`（支援 `file://`）、`tools.youtube_transcript`、
+`pipeline.regex_count / filter / if / llm_summarize / subprocess`、
+`actions.log_append / stdout`。
+CLI 旗標：`--dry-run`、`--strict`（registry lint）、`--validate`（schema）、`--json`。
+flows/：`jobseek-daily.yaml`、`youtube-summarize.yaml`、`example-webhook.yaml`
+（declaration-only，無 HTTP listener）、`examples/`（兩個全離線可跑的範例）。
 
 ## 3. 與 phantom 協同
-- 🔴 **待修**：`llm_driver.PhantomLLM` 現呼叫 `phantom event capture --kind llm.complete --json -`（推測式介面，phantom CLI 實際不吃 → 永遠 fallback stub）。**改走 `phantom exec`**（真正的 provider-trait 介面，跟 ai-feed/secure-connector 同一做法）。
-- 未來 block 可 `phantom dispatch` 路由到指定 node（cluster-aware）。
+- 🟢 **已修**：`llm_driver.PhantomLLM` 改走 `phantom exec`（真正的 provider-trait
+  介面）。subprocess boundary 已 harden：bounded timeout、stderr capture、binary
+  缺失/timeout/OSError 一律 degrade 成 stub 並把原因記在 `LLMResult.error`。
+- 🔴 **未來**（ROADMAP）：block 經 `phantom dispatch` 路由到指定 node（cluster-aware）
+  尚未實作。
 
 ## 4. 🔭 未來整合（決策 2026-06-02：保留 10 萬行，當 staged 工具源，不砍）
 `ai_automation_framework` + `data_analysis` **目前未被引擎 import**，但**不是死重量**——它們是「30+ 工具」的來源庫，計畫**包成 phantom 可調用的 flow block / MCP tool**：
@@ -23,14 +39,22 @@
 
 **整合方式**：每個工具寫一層薄 adapter block（讀 flow `with:` 參數 → 呼對應模組 → 回結果進 ctx），逐步把常用的先接（不需一次全包）。也可經 mcp_bridge 露成 MCP tool 給 Claude Desktop。
 
-**誠實標註**：README 現吹「merge gives 30+ tools」要改成「**vendored；逐步整合中，目前引擎用 6 個 native blocks**」——別讓人以為 30+ 工具已可用。
+**誠實標註**（已落實於 README）：不要吹「30+ tools 已可用」。引擎目前是 **9 個
+native blocks**；vendored 是 staged 工具源、逐步整合中（每個工具要先寫一層 adapter
+block 才算數）。
 
-## 5. 待辦
-- 🔴 `llm_driver` → `phantom exec`（接通 LLM，現永遠 stub）。
-- 🔴 引擎**零測試** → 補 runner / llm_driver 測試。
+> 決策仍然有效：**保留** vendored subtrees（不砍），當未來整合的來源。因此本輪
+> **未刪除** `ai_automation_framework/` / `data_analysis/`；改為把 README/DESIGN
+> 的浮誇宣稱對齊到現實（P2-3）。
+
+## 5. 待辦狀態
+- 🟢 `llm_driver` → `phantom exec`（已接通；缺 CLI 時 stub fallback）。
+- 🟢 引擎測試（hermetic pytest suite：runner / llm_driver / schema / examples / packaging）。
+- 🟢 schema 驗證 + structured run records。
+- 🟢 兩個全離線 example flows。
+- 🟢 README/DESIGN 對齊現實 + 新增 [`ROADMAP.md`](ROADMAP.md)。
 - 🟡 逐步把 vendored 工具包成 block（未來整合，按需求挑）。
-- 🟡 README 對齊（vendored / 整合中，別吹未整合的工具數）。
-- 🟢 cluster-aware dispatch block（spec 目標）。
+- 🔴 cluster-aware dispatch block（**未實作**；ROADMAP 目標，先前被誤標為已完成）。
 
 ## 6. 風險
 - vendored 10 萬行的 **license / scrub**（開源前掃；含他人程式碼要確認授權相容 Apache-2.0）。

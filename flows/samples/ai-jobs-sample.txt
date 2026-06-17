@@ -1,0 +1,14 @@
+AI Engineer — build and ship LLM-powered features. Work with agent
+frameworks, RAG pipelines, and prompt evaluation. Python + a little Rust.
+
+Machine Learning Engineer — own model training and MLOps. Experience with
+vector databases, embeddings, and retrieval. AI product mindset required.
+
+Applied AI Researcher — push the frontier on agent autonomy and tool use.
+Strong background in LLM fine-tuning, evaluation harnesses, and RAG.
+
+Data / AI Platform Engineer — keep the AI stack reliable: inference serving,
+cost routing across providers, and observability for LLM agents.
+
+(This is a small, bundled sample page used by the offline example flows so
+they run end-to-end without touching the network.)

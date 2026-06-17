@@ -141,6 +141,70 @@ def test_gate_passes_truthy_values():
     assert _gate_passes("no", {}) is False
 
 
+# ---------- subprocess block hardening (P1-3) ----------
+
+def test_subprocess_block_missing_binary_does_not_crash(monkeypatch):
+    """A missing binary must yield a structured error dict, not raise."""
+    def _missing(cmd, **kw):
+        raise FileNotFoundError(2, "No such file or directory", cmd[0])
+
+    monkeypatch.setattr(runner.subprocess, "run", _missing)
+    out = runner._block_subprocess(
+        {"cmd": ["definitely_not_a_real_binary_xyz", "--help"]}, {})
+    assert out["returncode"] != 0
+    assert out["timed_out"] is False
+    assert "not found" in out["stderr"].lower()
+    assert out["stdout"] == ""
+
+
+def test_subprocess_block_timeout_is_bounded(monkeypatch):
+    """A timeout must be caught and reported, never propagated."""
+    seen = {}
+
+    def _timeout(cmd, **kw):
+        seen.update(kw)
+        raise runner.subprocess.TimeoutExpired(cmd, kw.get("timeout", 1))
+
+    monkeypatch.setattr(runner.subprocess, "run", _timeout)
+    out = runner._block_subprocess({"cmd": ["sleep", "999"], "timeout": 2}, {})
+    assert out["timed_out"] is True
+    assert out["returncode"] != 0
+    assert seen.get("timeout") == 2
+    assert "timed out" in out["stderr"].lower()
+
+
+def test_subprocess_block_captures_stdout_stderr_returncode(monkeypatch):
+    """Happy path returns captured streams and exit code."""
+    class _P:
+        stdout = "hello-out"
+        stderr = "warn-err"
+        returncode = 0
+
+    monkeypatch.setattr(runner.subprocess, "run", lambda *a, **k: _P())
+    out = runner._block_subprocess({"cmd": ["echo", "hi"]}, {})
+    assert out == {"stdout": "hello-out", "stderr": "warn-err",
+                   "returncode": 0, "timed_out": False}
+
+
+def test_subprocess_block_default_timeout_applied(monkeypatch):
+    """When no timeout is given, a finite default is still passed down."""
+    seen = {}
+
+    class _P:
+        stdout = ""
+        stderr = ""
+        returncode = 0
+
+    def _run(cmd, **kw):
+        seen.update(kw)
+        return _P()
+
+    monkeypatch.setattr(runner.subprocess, "run", _run)
+    runner._block_subprocess({"cmd": ["echo", "x"]}, {})
+    assert isinstance(seen.get("timeout"), (int, float))
+    assert seen["timeout"] > 0
+
+
 def test_registry_has_expected_native_blocks():
     # the engine's native block contract (DESIGN.md §2 + youtube addition)
     for name in (

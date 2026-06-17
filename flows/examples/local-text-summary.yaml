@@ -1,0 +1,53 @@
+name: local-text-summary
+version: 1
+description: |
+  Honest, fully-offline example: fetch a page over http_get (here a bundled
+  file:// sample so it runs with no network), count + filter for AI keywords,
+  gate on a hit, and summarise via the LLM driver. With PHANTOM_FLOW_STUB_LLM=1
+  the summary comes from the deterministic stub, so this whole flow runs
+  end-to-end with zero external dependencies.
+
+  Run (offline, stub LLM):
+    PHANTOM_FLOW_SAMPLE="file:///$(pwd)/flows/samples/ai-jobs-sample.txt" \
+    PHANTOM_FLOW_STUB_LLM=1 \
+      python -m phantom_flow.runner flows/examples/local-text-summary.yaml --json
+
+  Point PHANTOM_FLOW_SAMPLE at a real https:// URL (and drop the stub env
+  var, with a phantom CLI installed) to run it for real.
+
+trigger:
+  type: manual
+
+pipeline:
+  - id: fetch
+    block: tools.http_get
+    url: "${env.PHANTOM_FLOW_SAMPLE}"
+    max_bytes: 51200
+    timeout: 15
+
+  - id: count
+    block: pipeline.regex_count
+    input: "${fetch.body}"
+    pattern: "AI"
+
+  - id: filter
+    block: pipeline.filter
+    input: "${fetch.body}"
+    keywords: "AI, LLM, agent, RAG, MLOps"
+
+  - id: gate
+    block: pipeline.if
+    condition: "${count.value} > 0"
+
+  - id: summary
+    block: pipeline.llm_summarize
+    input: "${fetch.body}"
+    prompt: "Summarise these AI job postings in 2 short bullets:"
+
+outbound:
+  - block: actions.stdout
+    when: "${gate.true}"
+    line: "[local-text-summary] AI hits=${count.value} matched=${filter.matched} llm=${summary.backend}"
+  - block: actions.stdout
+    when: "${gate.true}"
+    line: "summary: ${summary.summary}"
