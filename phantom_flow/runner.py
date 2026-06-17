@@ -218,7 +218,10 @@ def _block_http_get(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any
     headers = {} if url.startswith("file:") else {"User-Agent": ua}
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=(spec.get("timeout") or 30)) as resp:
-        raw = resp.read(spec.get("max_bytes", 50 * 1024))
+        # bounded: coerce null/0 to the default cap so an explicit `max_bytes:
+        # null` can never become resp.read(None) (an UNBOUNDED full-body read),
+        # mirroring the timeout null/0 coercion above.
+        raw = resp.read(spec.get("max_bytes") or 50 * 1024)
         charset = "utf-8"
         get_charset = getattr(resp.headers, "get_content_charset", None)
         if callable(get_charset):
