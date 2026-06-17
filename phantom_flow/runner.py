@@ -276,7 +276,14 @@ def _gate_passes(when: Optional[str], ctx: Dict[str, Any]) -> bool:
     return resolved in {"true", "1", "yes"}
 
 
-def run_flow(flow: Dict[str, Any], *, dry_run: bool = False) -> Dict[str, Any]:
+def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
+             strict: bool = False) -> Dict[str, Any]:
+    """Execute (or, with ``dry_run``, only plan) a flow.
+
+    ``strict`` validates that every ``block`` name resolves in
+    ``BLOCK_REGISTRY`` even during a dry-run — useful for linting flow files
+    in CI without touching the network or an LLM.
+    """
     ctx: Dict[str, Any] = {}
     plan: List[str] = []
 
@@ -288,6 +295,8 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False) -> Dict[str, Any]:
         sid = step.get("id") or step.get("block", "?")
         block_name = step.get("block", "?")
         plan.append(f"pipeline.{sid} -> {block_name}")
+        if strict and block_name not in BLOCK_REGISTRY:
+            raise KeyError(f"unknown block: {block_name}")
         if dry_run:
             continue
         fn = BLOCK_REGISTRY.get(block_name)
@@ -302,6 +311,8 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False) -> Dict[str, Any]:
         when = action.get("when")
         plan.append(f"outbound -> {block_name}"
                     + (f"  [gated by {when}]" if when else ""))
+        if strict and block_name not in BLOCK_REGISTRY:
+            raise KeyError(f"unknown action: {block_name}")
         if dry_run:
             continue
         if not _gate_passes(when, ctx):
@@ -325,6 +336,9 @@ def _main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("flow", help="path to flow YAML")
     parser.add_argument("--dry-run", action="store_true",
                         help="parse + plan only; no network / no filesystem writes")
+    parser.add_argument("--strict", action="store_true",
+                        help="validate every block name against the registry "
+                             "(lints a flow file; pairs well with --dry-run)")
     parser.add_argument("--json", action="store_true",
                         help="emit a final JSON summary on stdout")
     args = parser.parse_args(argv)
@@ -346,7 +360,7 @@ def _main(argv: Optional[List[str]] = None) -> int:
     print(f"  mode    = {'DRY RUN' if args.dry_run else 'EXECUTE'}")
     print(f"  llm_cli = {shutil.which('phantom') or '<not installed>'}")
 
-    summary = run_flow(flow, dry_run=args.dry_run)
+    summary = run_flow(flow, dry_run=args.dry_run, strict=args.strict)
 
     print("--- plan ---")
     for line in summary["plan"]:
