@@ -45,13 +45,17 @@ class PhantomLLM:
     dependency on the phantom Rust crate.
     """
 
-    def __init__(self, model_hint: str = "auto", timeout: float = 60.0) -> None:
+    def __init__(self, model_hint: str = "auto", timeout: float = 60.0,
+                 force_stub: bool = False) -> None:
         self.model_hint = model_hint
         self.timeout = timeout
+        self.force_stub = force_stub
         self._cli = shutil.which("phantom")
 
     @property
     def available(self) -> bool:
+        if self.force_stub:
+            return False
         return self._cli is not None and os.environ.get("PHANTOM_FLOW_STUB_LLM") != "1"
 
     def complete(self, prompt: str, *, system: Optional[str] = None) -> LLMResult:
