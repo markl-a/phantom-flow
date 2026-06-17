@@ -37,6 +37,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -45,6 +46,128 @@ try:
     import yaml  # type: ignore
 except ImportError:  # pragma: no cover - keep dry-run usable without PyYAML
     yaml = None
+
+
+# ---------- schema validation + structured run records (P2-1) ----------
+
+VALID_TRIGGER_TYPES = {"cron", "webhook", "event", "manual"}
+
+
+class FlowValidationError(ValueError):
+    """Raised when a flow definition fails schema validation.
+
+    Carries the full list of problems in ``.errors`` so a linter can show
+    every issue at once instead of one-at-a-time.
+    """
+
+    def __init__(self, errors: List[str]) -> None:
+        self.errors = list(errors)
+        super().__init__("; ".join(self.errors))
+
+
+class FlowExecutionError(RuntimeError):
+    """Raised when a pipeline/outbound block fails during execution.
+
+    Carries the partial :class:`RunRecord` (``.record``) captured up to and
+    including the failed step, with the underlying exception chained.
+    """
+
+    def __init__(self, message: str, record: "RunRecord") -> None:
+        self.record = record
+        super().__init__(message)
+
+
+@dataclass
+class StepRecord:
+    id: str
+    block: str
+    status: str  # "ok" | "error"
+    error: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"id": self.id, "block": self.block, "status": self.status,
+                "error": self.error}
+
+
+@dataclass
+class RunRecord:
+    """Structured record of a single flow run (or dry-run plan)."""
+
+    name: str
+    version: Any
+    trigger_type: str
+    dry_run: bool
+    status: str  # "ok" | "error"
+    started_at: str
+    finished_at: str
+    steps: List[StepRecord] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "version": self.version,
+            "trigger_type": self.trigger_type,
+            "dry_run": self.dry_run,
+            "status": self.status,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
+            "steps": [s.to_dict() for s in self.steps],
+        }
+
+
+def validate_flow(flow: Any) -> Dict[str, Any]:
+    """Validate a flow's shape; return it unchanged on success.
+
+    Checks: flow is a mapping; ``name`` present + non-empty; ``trigger.type``
+    is one of ``VALID_TRIGGER_TYPES`` (when a trigger is given); ``pipeline``
+    is a list; every pipeline step is a mapping carrying a ``block`` name.
+    Collects ALL problems before raising a single ``FlowValidationError``.
+    """
+    errors: List[str] = []
+
+    if not isinstance(flow, dict):
+        raise FlowValidationError(["flow must be a mapping (YAML object)"])
+
+    name = flow.get("name")
+    if not name or not str(name).strip():
+        errors.append("flow.name is required and must be non-empty")
+
+    trigger = flow.get("trigger")
+    if trigger is not None:
+        if not isinstance(trigger, dict):
+            errors.append("flow.trigger must be a mapping")
+        else:
+            ttype = trigger.get("type")
+            if ttype is not None and ttype not in VALID_TRIGGER_TYPES:
+                errors.append(
+                    f"flow.trigger.type {ttype!r} is not one of "
+                    f"{sorted(VALID_TRIGGER_TYPES)}"
+                )
+
+    pipeline = flow.get("pipeline", [])
+    if not isinstance(pipeline, list):
+        errors.append("flow.pipeline must be a list")
+    else:
+        for i, step in enumerate(pipeline):
+            if not isinstance(step, dict):
+                errors.append(f"flow.pipeline[{i}] must be a mapping")
+                continue
+            if not step.get("block"):
+                errors.append(f"flow.pipeline[{i}] is missing a 'block' name")
+
+    outbound = flow.get("outbound", [])
+    if not isinstance(outbound, list):
+        errors.append("flow.outbound must be a list")
+    else:
+        for i, action in enumerate(outbound):
+            if not isinstance(action, dict):
+                errors.append(f"flow.outbound[{i}] must be a mapping")
+            elif not action.get("block"):
+                errors.append(f"flow.outbound[{i}] is missing a 'block' name")
+
+    if errors:
+        raise FlowValidationError(errors)
+    return flow
 
 
 # ---------- context + variable substitution ----------
@@ -296,19 +419,44 @@ def _gate_passes(when: Optional[str], ctx: Dict[str, Any]) -> bool:
 
 
 def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
-             strict: bool = False) -> Dict[str, Any]:
+             strict: bool = False, validate: bool = False) -> Dict[str, Any]:
     """Execute (or, with ``dry_run``, only plan) a flow.
 
     ``strict`` validates that every ``block`` name resolves in
     ``BLOCK_REGISTRY`` even during a dry-run — useful for linting flow files
     in CI without touching the network or an LLM.
+
+    ``validate`` runs full schema validation (:func:`validate_flow`) first and
+    raises ``FlowValidationError`` on any problem.
+
+    Always returns a structured :class:`RunRecord` under the ``record`` key. A
+    block that raises mid-execution is recorded as a failed ``StepRecord`` and
+    re-surfaced as :class:`FlowExecutionError` carrying the partial record.
     """
+    if validate:
+        validate_flow(flow)
+
     ctx: Dict[str, Any] = {}
     plan: List[str] = []
+    steps: List[StepRecord] = []
+    started_at = datetime.now().isoformat(timespec="seconds")
 
     trigger = flow.get("trigger", {})
+    trigger_type = trigger.get("type", "manual") if isinstance(trigger, dict) else "manual"
     plan.append(f"trigger: {trigger.get('type', '?')} "
                 f"({trigger.get('schedule') or trigger.get('url') or trigger.get('on') or '-'})")
+
+    def _finish(status: str) -> RunRecord:
+        return RunRecord(
+            name=str(flow.get("name", "?")),
+            version=flow.get("version", "?"),
+            trigger_type=trigger_type,
+            dry_run=dry_run,
+            status=status,
+            started_at=started_at,
+            finished_at=datetime.now().isoformat(timespec="seconds"),
+            steps=steps,
+        )
 
     for step in flow.get("pipeline", []):
         sid = step.get("id") or step.get("block", "?")
@@ -323,7 +471,16 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
             raise KeyError(f"unknown block: {block_name}")
         spec = _resolve({k: v for k, v in step.items()
                          if k not in {"id", "block"}}, ctx)
-        ctx[sid] = fn(spec, ctx)
+        try:
+            ctx[sid] = fn(spec, ctx)
+        except Exception as exc:  # noqa: BLE001 - record then re-surface
+            steps.append(StepRecord(id=sid, block=block_name, status="error",
+                                    error=f"{type(exc).__name__}: {exc}"))
+            raise FlowExecutionError(
+                f"pipeline step {sid!r} ({block_name}) failed: {exc}",
+                _finish("error"),
+            ) from exc
+        steps.append(StepRecord(id=sid, block=block_name, status="ok"))
 
     for action in flow.get("outbound", []):
         block_name = action.get("block", "?")
@@ -341,10 +498,20 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
             raise KeyError(f"unknown action: {block_name}")
         spec = _resolve({k: v for k, v in action.items()
                          if k not in {"block", "when"}}, ctx)
-        fn(spec, ctx)
+        try:
+            fn(spec, ctx)
+        except Exception as exc:  # noqa: BLE001 - record then re-surface
+            steps.append(StepRecord(id=f"outbound:{block_name}",
+                                    block=block_name, status="error",
+                                    error=f"{type(exc).__name__}: {exc}"))
+            raise FlowExecutionError(
+                f"outbound action {block_name} failed: {exc}",
+                _finish("error"),
+            ) from exc
 
+    record = _finish("ok")
     return {"plan": plan, "context": ctx, "dry_run": dry_run,
-            "name": flow.get("name", "?")}
+            "name": flow.get("name", "?"), "record": record}
 
 
 # ---------- CLI ----------
@@ -358,8 +525,11 @@ def _main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--strict", action="store_true",
                         help="validate every block name against the registry "
                              "(lints a flow file; pairs well with --dry-run)")
+    parser.add_argument("--validate", action="store_true",
+                        help="run full schema validation (name/trigger/pipeline) "
+                             "before planning/executing")
     parser.add_argument("--json", action="store_true",
-                        help="emit a final JSON summary on stdout")
+                        help="emit a final JSON summary (incl. run record) on stdout")
     args = parser.parse_args(argv)
 
     path = Path(args.flow).expanduser().resolve()
@@ -373,13 +543,28 @@ def _main(argv: Optional[List[str]] = None) -> int:
         print(f"error: failed to load {path}: {exc}", file=sys.stderr)
         return 2
 
+    if args.validate:
+        try:
+            validate_flow(flow)
+        except FlowValidationError as exc:
+            print(f"error: invalid flow {path.name}:", file=sys.stderr)
+            for problem in exc.errors:
+                print(f"  - {problem}", file=sys.stderr)
+            return 2
+
     print(f"phantom-flow runner :: {path.name}")
     print(f"  name    = {flow.get('name', '?')}")
     print(f"  version = {flow.get('version', '?')}")
     print(f"  mode    = {'DRY RUN' if args.dry_run else 'EXECUTE'}")
     print(f"  llm_cli = {shutil.which('phantom') or '<not installed>'}")
 
-    summary = run_flow(flow, dry_run=args.dry_run, strict=args.strict)
+    try:
+        summary = run_flow(flow, dry_run=args.dry_run, strict=args.strict)
+    except FlowExecutionError as exc:
+        print(f"error: flow execution failed: {exc}", file=sys.stderr)
+        if args.json:
+            print(json.dumps({"record": exc.record.to_dict()}, indent=2))
+        return 1
 
     print("--- plan ---")
     for line in summary["plan"]:
@@ -394,6 +579,7 @@ def _main(argv: Optional[List[str]] = None) -> int:
         print("--- json ---")
         print(json.dumps({"name": summary["name"],
                           "dry_run": summary["dry_run"],
+                          "record": summary["record"].to_dict(),
                           "context": safe_ctx}, indent=2))
 
     return 0
