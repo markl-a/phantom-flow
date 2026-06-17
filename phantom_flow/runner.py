@@ -217,7 +217,7 @@ def _block_http_get(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any
     # file:// handlers reject extra request headers; only set UA for http(s).
     headers = {} if url.startswith("file:") else {"User-Agent": ua}
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=spec.get("timeout", 30)) as resp:
+    with urllib.request.urlopen(req, timeout=(spec.get("timeout") or 30)) as resp:
         raw = resp.read(spec.get("max_bytes", 50 * 1024))
         charset = "utf-8"
         get_charset = getattr(resp.headers, "get_content_charset", None)
@@ -363,7 +363,7 @@ def _block_subprocess(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, A
     cmd = spec["cmd"]
     if isinstance(cmd, str):
         cmd = ["bash", "-lc", cmd]
-    timeout = spec.get("timeout", 120)  # bounded by default
+    timeout = spec.get("timeout") or 120  # bounded: coerce null/0 to the default so it's always finite
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True,
                               timeout=timeout)
