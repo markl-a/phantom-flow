@@ -326,11 +326,25 @@ def _block_youtube_transcript(spec: Dict[str, Any],
 
 def _block_llm_summarize(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
     from phantom_flow.llm_driver import PhantomLLM
-    llm = PhantomLLM()
+    # Wire the driver's offline/test + bounding knobs through from the flow
+    # spec so they're reachable on the production path (not just unit tests):
+    #   force_stub : request the deterministic stub per-step (offline/test),
+    #                independent of the global PHANTOM_FLOW_STUB_LLM env var.
+    #   timeout    : bounded; null/0 coerce to the driver default so a flow
+    #                can never make the LLM call block forever.
+    #   model_hint : provider/model routing hint passed to the driver.
+    kwargs: Dict[str, Any] = {"force_stub": bool(spec.get("force_stub", False))}
+    if spec.get("timeout"):  # null/0 -> keep the bounded driver default
+        kwargs["timeout"] = spec["timeout"]
+    if spec.get("model_hint"):
+        kwargs["model_hint"] = spec["model_hint"]
+    llm = PhantomLLM(**kwargs)
     text = spec.get("input", "")
     prompt = spec.get("prompt", "Summarise the following text in 2 bullets:")
     res = llm.complete(f"{prompt}\n\n{text[:4000]}")
-    return {"summary": res.text, "backend": res.backend}
+    # Surface the degrade reason (LLMResult.error) so per-step reporting is
+    # honest about a silent fall-back to the stub instead of dropping it.
+    return {"summary": res.text, "backend": res.backend, "error": res.error or ""}
 
 
 def _block_if(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
