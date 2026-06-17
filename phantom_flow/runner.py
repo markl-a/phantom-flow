@@ -209,14 +209,26 @@ def _lookup(expr: str, ctx: Dict[str, Any]) -> Any:
 # ---------- blocks ----------
 
 def _block_http_get(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Fetch a URL's body. Supports ``http(s)://`` and ``file://`` (stdlib
+    urllib), the latter letting example flows exercise the exact same code
+    path fully offline against a bundled sample file."""
     url = spec["url"]
     ua = spec.get("user_agent", "phantom-flow/0.1")
-    req = urllib.request.Request(url, headers={"User-Agent": ua})
+    # file:// handlers reject extra request headers; only set UA for http(s).
+    headers = {} if url.startswith("file:") else {"User-Agent": ua}
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=spec.get("timeout", 30)) as resp:
         raw = resp.read(spec.get("max_bytes", 50 * 1024))
-        body = raw.decode(resp.headers.get_content_charset("utf-8"),
-                          errors="replace")
-        return {"url": url, "status": resp.status, "body": body,
+        charset = "utf-8"
+        get_charset = getattr(resp.headers, "get_content_charset", None)
+        if callable(get_charset):
+            charset = get_charset() or "utf-8"
+        body = raw.decode(charset, errors="replace")
+        # file:// responses have status None; normalise to 200 (read OK).
+        status = getattr(resp, "status", None)
+        if status is None:
+            status = 200
+        return {"url": url, "status": status, "body": body,
                 "body_len": len(raw)}
 
 

@@ -1,0 +1,38 @@
+name: keyword-report
+version: 1
+description: |
+  Honest, fully-offline example: fetch a page over http_get (bundled file://
+  sample), match a keyword set, and produce a one-line stub-LLM report. A
+  minimal "what does this page mention?" report flow that needs no network and
+  no real LLM.
+
+  Run (offline, stub LLM):
+    PHANTOM_FLOW_SAMPLE="file:///$(pwd)/flows/samples/ai-jobs-sample.txt" \
+    PHANTOM_FLOW_STUB_LLM=1 \
+      python -m phantom_flow.runner flows/examples/keyword-report.yaml --json
+
+trigger:
+  type: manual
+
+pipeline:
+  - id: fetch
+    block: tools.http_get
+    url: "${env.PHANTOM_FLOW_SAMPLE}"
+    max_bytes: 51200
+    timeout: 15
+
+  - id: matched
+    block: pipeline.filter
+    input: "${fetch.body}"
+    keywords: "AI, LLM, agent, RAG, MLOps, embeddings, vector"
+
+  - id: report
+    block: pipeline.llm_summarize
+    input: "matched keywords: ${matched.matched}"
+    prompt: "Write a one-line report of which AI topics this page covers:"
+
+outbound:
+  - block: actions.stdout
+    line: "[keyword-report] matched_count=${matched.matched_count} keywords=${matched.matched}"
+  - block: actions.stdout
+    line: "report (${report.backend}): ${report.summary}"
