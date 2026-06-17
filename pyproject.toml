@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phantom-flow"
+version = "0.1.0a0"
+description = "A small, local-first YAML workflow runner for the phantom-mesh ecosystem."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Mark Lai" }]
+keywords = ["workflow", "yaml", "automation", "local-first", "phantom-mesh"]
+
+# CORE runtime deps only — the engine is intentionally near-stdlib.
+# PyYAML (flow parsing) is the single hard dependency.
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+# YouTube transcript fetching is optional; the youtube-summarize flow falls
+# back to a bundled cached transcript when this is not installed.
+youtube = ["youtube-transcript-api>=0.6"]
+# Test tooling.
+dev = ["pytest>=7"]
+
+[project.scripts]
+phantom-flow = "phantom_flow.runner:_main"
+
+[tool.setuptools]
+# Only the engine package ships; the vendored subtrees are staged sources,
+# not part of the installable distribution.
+packages = ["phantom_flow"]

@@ -5,12 +5,22 @@ on:
   pull_request:
     branches: [master, main]
 jobs:
-  smoke:
+  engine:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install pyyaml
-      - run: python -c "from phantom_flow.runner import load_flow, run_flow; print('phantom-flow runner import ok')"
+      # CORE deps only — the engine is near-stdlib (see requirements.txt).
+      - run: pip install -r requirements.txt pytest
+      - name: import smoke
+        run: python -c "from phantom_flow.runner import load_flow, run_flow; print('phantom-flow runner import ok')"
+      - name: engine test suite (hermetic / offline)
+        run: python -m pytest -ra -q
+      - name: lint flows with strict dry-run
+        run: |
+          for f in flows/*.yaml; do
+            echo "== $f =="
+            python -m phantom_flow.runner "$f" --dry-run --strict || exit 1
+          done
