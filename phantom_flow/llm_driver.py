@@ -35,6 +35,7 @@ class LLMResult:
     text: str
     backend: str  # "phantom" | "stub"
     raw: Optional[str] = None
+    error: Optional[str] = None  # populated when a phantom call failed/fell back
 
 
 class PhantomLLM:
@@ -74,15 +75,34 @@ class PhantomLLM:
                 capture_output=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=self.timeout,
+                timeout=self.timeout,  # bounded: never blocks the flow forever
                 check=False,
             )
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            return self._stub(prompt, system)
+        except subprocess.TimeoutExpired:
+            return self._stub(
+                prompt, system,
+                error=f"phantom exec timed out after {self.timeout}s",
+            )
+        except FileNotFoundError as exc:
+            # Binary vanished between which() and exec (e.g. uninstalled mid-run).
+            return self._stub(prompt, system,
+                              error=f"phantom binary not found: {exc}")
+        except OSError as exc:  # exec format error, permission, etc.
+            return self._stub(prompt, system,
+                              error=f"phantom exec OSError: {exc}")
 
         text = self._clean_stdout(proc.stdout)
         if proc.returncode != 0 or not text:
-            return self._stub(prompt, system)
+            # Capture stderr so the caller can see *why* we fell back rather
+            # than getting a silent stub.
+            stderr = (proc.stderr or "").strip()
+            reason = (
+                f"phantom exec rc={proc.returncode}"
+                + (f": {stderr}" if stderr else "")
+                if proc.returncode != 0
+                else "phantom exec produced empty output"
+            )
+            return self._stub(prompt, system, error=reason)
 
         return LLMResult(text=text, backend="phantom", raw=proc.stdout)
 
@@ -105,11 +125,13 @@ class PhantomLLM:
             kept.append(line)
         return "\n".join(kept).strip()
 
-    def _stub(self, prompt: str, system: Optional[str]) -> LLMResult:
+    def _stub(self, prompt: str, system: Optional[str],
+              error: Optional[str] = None) -> LLMResult:
         head = (prompt or "").splitlines()[0] if prompt else ""
         return LLMResult(
             text=f"[stub-llm] {head[:120]}",
             backend="stub",
+            error=error,
         )
 
 

@@ -218,14 +218,33 @@ def _block_if(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _block_subprocess(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """Escape hatch for heavy steps that live inside the merged subtree."""
+    """Escape hatch for heavy steps that live inside the merged subtree.
+
+    Hardened boundary: the timeout is always finite, a missing binary or a
+    timeout is reported as a structured result (``returncode`` != 0 +
+    ``stderr`` + ``timed_out``) instead of propagating an exception that would
+    abort the whole flow.
+    """
     cmd = spec["cmd"]
     if isinstance(cmd, str):
         cmd = ["bash", "-lc", cmd]
-    proc = subprocess.run(cmd, capture_output=True, text=True,
-                          timeout=spec.get("timeout", 120))
+    timeout = spec.get("timeout", 120)  # bounded by default
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        return {"stdout": exc.stdout or "",
+                "stderr": f"subprocess timed out after {timeout}s",
+                "returncode": 124, "timed_out": True}
+    except FileNotFoundError as exc:
+        return {"stdout": "",
+                "stderr": f"command not found: {exc}",
+                "returncode": 127, "timed_out": False}
+    except OSError as exc:
+        return {"stdout": "", "stderr": f"OSError: {exc}",
+                "returncode": 126, "timed_out": False}
     return {"stdout": proc.stdout, "stderr": proc.stderr,
-            "returncode": proc.returncode}
+            "returncode": proc.returncode, "timed_out": False}
 
 
 def _action_log_append(spec: Dict[str, Any], _ctx: Dict[str, Any]) -> Dict[str, Any]:
