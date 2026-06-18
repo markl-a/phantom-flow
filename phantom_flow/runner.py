@@ -39,6 +39,7 @@ import sys
 import urllib.request
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -448,7 +449,8 @@ def _gate_passes(when: Optional[str], ctx: Dict[str, Any]) -> bool:
 
 
 def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
-             strict: bool = False, validate: bool = False) -> Dict[str, Any]:
+             strict: bool = False, validate: bool = False,
+             initial_ctx: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Execute (or, with ``dry_run``, only plan) a flow.
 
     ``strict`` validates that every ``block`` name resolves in
@@ -465,7 +467,7 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
     if validate:
         validate_flow(flow)
 
-    ctx: Dict[str, Any] = {}
+    ctx: Dict[str, Any] = dict(initial_ctx) if initial_ctx else {}
     plan: List[str] = []
     steps: List[StepRecord] = []
     started_at = datetime.now().isoformat(timespec="seconds")
@@ -545,7 +547,106 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
 
 # ---------- CLI ----------
 
+def _flow_webhook_path(flow):
+    """Return the flow's webhook trigger URL path, or None if the flow is not a webhook flow."""
+    trigger = flow.get("trigger", {})
+    if not isinstance(trigger, dict):
+        return None
+    if trigger.get("type") != "webhook":
+        return None
+    return trigger.get("url")
+
+
+def make_webhook_server(flow, host="127.0.0.1", port=0):
+    """Build (but do NOT start) a stdlib HTTPServer that turns POSTs to the flow's
+    trigger.url path into real run_flow executions with ctx['event'] seeded.
+    Bind port=0 for an ephemeral port (tests read server.server_address[1])."""
+    webhook_path = _flow_webhook_path(flow)
+
+    class _Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):  # silence default stderr logging
+            pass
+
+        def _send_json(self, code, payload):
+            data = json.dumps(payload).encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_POST(self):
+            if webhook_path is None or self.path != webhook_path:
+                self._send_json(404, {"error": "no flow mapped to this path",
+                                      "path": self.path})
+                return
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length).decode("utf-8", "replace") if length else ""
+            try:
+                body = json.loads(raw) if raw else None
+            except (ValueError, TypeError):
+                body = raw
+            event = {
+                "body": body,
+                "raw": raw,
+                "headers": {k: v for k, v in self.headers.items()},
+                "method": "POST",
+                "path": self.path,
+            }
+            try:
+                summary = run_flow(flow, initial_ctx={"event": event})
+            except FlowExecutionError as exc:
+                self._send_json(500, {"status": "error",
+                                      "record": exc.record.to_dict()})
+                return
+            record = summary["record"]
+            self._send_json(200, {"name": summary.get("name", "?"),
+                                  "status": record.status,
+                                  "record": record.to_dict()})
+
+    return HTTPServer((host, port), _Handler)
+
+
+def serve_flow(flow, host="127.0.0.1", port=8000):
+    """Start the webhook listener (blocking) until interrupted."""
+    server = make_webhook_server(flow, host, port)
+    bound_host, bound_port = server.server_address[0], server.server_address[1]
+    path = _flow_webhook_path(flow)
+    print(f"phantom-flow serve :: listening on http://{bound_host}:{bound_port}")
+    print(f"  POST {path or '<no webhook trigger.url>'} -> run flow {flow.get('name', '?')!r}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nphantom-flow serve :: shutting down")
+    finally:
+        server.server_close()
+
+
+def _serve_main(argv):
+    parser = argparse.ArgumentParser(prog="phantom-flow serve",
+                                     description="Start a stdlib HTTP webhook listener for a flow.")
+    parser.add_argument("flow", help="path to webhook flow YAML")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    args = parser.parse_args(argv)
+    path = Path(args.flow).expanduser().resolve()
+    if not path.exists():
+        print(f"error: flow file not found: {path}", file=sys.stderr)
+        return 2
+    flow = load_flow(path)
+    if _flow_webhook_path(flow) is None:
+        print("error: flow has no webhook trigger.url to serve", file=sys.stderr)
+        return 2
+    serve_flow(flow, args.host, args.port)
+    return 0
+
+
 def _main(argv: Optional[List[str]] = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "serve":
+        return _serve_main(argv[1:])
+
     parser = argparse.ArgumentParser(prog="phantom_flow.runner",
                                      description="Minimal YAML flow executor.")
     parser.add_argument("flow", help="path to flow YAML")
