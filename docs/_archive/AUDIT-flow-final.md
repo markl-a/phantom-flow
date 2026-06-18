@@ -1,3 +1,5 @@
+> ARCHIVED 2026-06-19 — frozen historical snapshot; current status lives in [/ROADMAP.md](../../ROADMAP.md). All three gaps below are fixed and shipped.
+
 # AUDIT — phantom-flow final form (second pass, branch sat/flow-final-form)
 
 Audited current engine vs the final-form vision (bounded timeouts, honest

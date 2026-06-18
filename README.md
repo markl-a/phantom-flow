@@ -1,7 +1,6 @@
 # phantom-flow
 
 [![CI](https://github.com/markl-a/phantom-flow/actions/workflows/ci.yml/badge.svg)](https://github.com/markl-a/phantom-flow/actions/workflows/ci.yml)
-![status: alpha](https://img.shields.io/badge/status-alpha-orange)
 ![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)
 
 > A small, **local-first YAML workflow runner**. You write a flow as a YAML
@@ -10,10 +9,11 @@
 > [phantom-mesh](https://github.com/markl-a/phantom-mesh) `phantom` CLI, and
 > falls back to a deterministic stub when that CLI is absent.
 
-This README describes **what the engine actually does today**. Aspirational
-features (cluster dispatch, a visual editor, an HTTP webhook listener, a
-marketplace) are tracked honestly in [`ROADMAP.md`](ROADMAP.md) and are **not**
-implemented yet.
+This README describes **what the engine actually does today** and how to use it.
+For project status — what is shipped, in progress, or planned (cluster dispatch,
+event triggers, a visual editor, a marketplace, …) — see
+[`ROADMAP.md`](ROADMAP.md), the single source of truth. For a map of all docs,
+see [`docs/INDEX.md`](docs/INDEX.md).
 
 ## What it is (and isn't)
 
@@ -104,8 +104,9 @@ Add your own by registering a `fn(spec, ctx) -> dict` in
   jobs page; needs the network to run for real (dry-run/lint is offline).
 - `flows/youtube-summarize.yaml` — transcript → summary; needs the optional
   `youtube` extra (or uses the bundled cached transcript).
-- `flows/example-webhook.yaml` — **declaration-only**; there is no HTTP
-  listener yet (see ROADMAP).
+- `flows/example-webhook.yaml` — a webhook-triggered flow; run
+  `python -m phantom_flow.runner serve flows/example-webhook.yaml` to start the
+  stdlib HTTP listener, then POST to its `trigger.url`.
 
 ## Tests
 

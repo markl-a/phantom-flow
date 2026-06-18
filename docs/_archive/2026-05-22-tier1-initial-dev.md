@@ -1,3 +1,5 @@
+> ARCHIVED 2026-06-19 — frozen historical snapshot; current status lives in [/ROADMAP.md](../../ROADMAP.md).
+
 # phantom-flow Tier 1 initial dev — 2026-05-22
 
 > One of the **14-point three-way wins**; M1 W2-4 in the master plan. Highest
