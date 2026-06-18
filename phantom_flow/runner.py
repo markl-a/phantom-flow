@@ -545,6 +545,68 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
             "name": flow.get("name", "?"), "record": record}
 
 
+def _cron_field(field: str, lo: int, hi: int) -> set:
+    """Parse one cron field into the set of matching ints. Supports '*', 'a,b' lists,
+    'a-b' ranges, and '*/n' or 'a-b/n' steps. Values outside [lo,hi] raise ValueError."""
+    out = set()
+    for part in field.split(","):
+        part = part.strip()
+        step = 1
+        if "/" in part:
+            base, _, step_s = part.partition("/")
+            step = int(step_s)
+            if step <= 0:
+                raise ValueError(f"invalid step in cron field: {part!r}")
+        else:
+            base = part
+        if base == "*":
+            start, end = lo, hi
+        elif "-" in base:
+            a, _, b = base.partition("-")
+            start, end = int(a), int(b)
+        else:
+            start = end = int(base)
+        if start < lo or end > hi or start > end:
+            raise ValueError(f"cron field out of range [{lo},{hi}]: {part!r}")
+        out.update(range(start, end + 1, step))
+    return out
+
+
+def schedule_matches(expr: str, dt: datetime) -> bool:
+    """Return True if the 5-field cron expression `expr` (minute hour day-of-month
+    month day-of-week) fires at datetime `dt`. Pure stdlib, no croniter.
+
+    day-of-week is 0-6 (Sun..Sat); 7 is also accepted as Sunday. As in standard
+    cron, day-of-month and day-of-week are OR-ed when BOTH are restricted; if either
+    is '*' only the other constrains the match.
+    """
+    fields = expr.split()
+    if len(fields) != 5:
+        raise ValueError(f"cron expression must have 5 fields, got {len(fields)}: {expr!r}")
+    minute, hour, dom, mon, dow = fields
+    min_ok = dt.minute in _cron_field(minute, 0, 59)
+    hour_ok = dt.hour in _cron_field(hour, 0, 23)
+    mon_ok = dt.month in _cron_field(mon, 1, 12)
+    if not (min_ok and hour_ok and mon_ok):
+        return False
+    dom_set = _cron_field(dom, 1, 31)
+    dow_set = _cron_field(dow, 0, 7)
+    if 7 in dow_set:
+        dow_set.add(0)
+    cur_dow = (dt.weekday() + 1) % 7  # Mon=0..Sun=6 -> Sun=0..Sat=6
+    dom_restricted = dom.strip() != "*"
+    dow_restricted = dow.strip() != "*"
+    dom_ok = dt.day in dom_set
+    dow_ok = cur_dow in dow_set
+    if dom_restricted and dow_restricted:
+        return dom_ok or dow_ok
+    if dom_restricted:
+        return dom_ok
+    if dow_restricted:
+        return dow_ok
+    return True
+
+
 # ---------- CLI ----------
 
 def _flow_webhook_path(flow):
@@ -641,11 +703,49 @@ def _serve_main(argv):
     return 0
 
 
+def _schedule_main(argv):
+    parser = argparse.ArgumentParser(prog="phantom-flow schedule",
+                                     description="Run a flow if its cron trigger.schedule matches a given time (time-injectable, no daemon).")
+    parser.add_argument("flow", help="path to flow YAML with a cron trigger.schedule")
+    parser.add_argument("--now", default=None,
+                        help="ISO-8601 datetime to evaluate the schedule against (default: real clock)")
+    parser.add_argument("--once", action="store_true",
+                        help="evaluate the schedule once against --now and run the flow if due, else print 'not due'")
+    args = parser.parse_args(argv)
+    path = Path(args.flow).expanduser().resolve()
+    if not path.exists():
+        print(f"error: flow file not found: {path}", file=sys.stderr)
+        return 2
+    flow = load_flow(path)
+    trigger = flow.get("trigger", {})
+    schedule = trigger.get("schedule") if isinstance(trigger, dict) else None
+    if not schedule:
+        print("error: flow has no cron trigger.schedule", file=sys.stderr)
+        return 2
+    now = datetime.fromisoformat(args.now) if args.now else datetime.now()
+    if not args.once:
+        # The continuous wall-clock daemon (sleep-loop ticking on the real clock)
+        # is intentionally OUT OF SCOPE here (env/time-blocked). Ship the hermetic core.
+        print("phantom-flow schedule :: daemon loop is not implemented (use --once with --now).")
+        print(f"  flow={flow.get('name', '?')!r} schedule={schedule!r}")
+        return 0
+    if schedule_matches(schedule, now):
+        print(f"phantom-flow schedule :: DUE at {now.isoformat()} (schedule {schedule!r}) -> running {flow.get('name', '?')!r}")
+        summary = run_flow(flow)
+        record = summary["record"]
+        print(f"  status={record.status} steps={len(record.steps)}")
+        return 0
+    print(f"phantom-flow schedule :: not due at {now.isoformat()} (schedule {schedule!r})")
+    return 0
+
+
 def _main(argv: Optional[List[str]] = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     if argv and argv[0] == "serve":
         return _serve_main(argv[1:])
+    if argv and argv[0] == "schedule":
+        return _schedule_main(argv[1:])
 
     parser = argparse.ArgumentParser(prog="phantom_flow.runner",
                                      description="Minimal YAML flow executor.")
