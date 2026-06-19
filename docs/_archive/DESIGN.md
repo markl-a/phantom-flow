@@ -1,3 +1,5 @@
+> ARCHIVED 2026-06-19 — 內容已併入 docs/phantom-flow.md;此為歷史版本。
+
 # phantom-flow — DESIGN（檢查 + 定位，更新 2026-06-17）
 
 > A small **local-first YAML workflow runner** on top of phantom-mesh.

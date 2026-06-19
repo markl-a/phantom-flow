@@ -1,3 +1,5 @@
+> ARCHIVED 2026-06-19 — 內容已併入 docs/phantom-flow.md;此為歷史版本。
+
 # ⑥ phantom-flow
 
 > ⚠️ **這是原始「願景 / spec」文件，不是 as-built 描述。** 下文許多功能

@@ -1,3 +1,5 @@
+> ARCHIVED 2026-06-19 — 內容已併入 docs/phantom-flow.md;此為歷史版本。
+
 # phantom-flow — ROADMAP
 
 > ⭐ **This file is the single source of truth for project status.** The README
