@@ -42,3 +42,14 @@ data/cache/
 # phantom-flow runtime
 flows/*.local.yaml
 runs/
+
+# Autonomous loop scratch (never push to public repo — may carry local leaks:
+# IPs, /Users/* and C:\Users\* paths, machine names). Untracked-only by design.
+.ai-shared/
+overnight/
+SESSION_RESUME.md
+cache/
+TASK-*.md
+configs/agents.*.toml
+plans/
+.claude/
