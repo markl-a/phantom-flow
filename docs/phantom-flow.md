@@ -426,18 +426,18 @@ flowchart TD
 
 | 目標 | 具體項 | 在哪做 + 哪 AI | 風險 / 前置 |
 |---|---|---|---|
-| Governor 把關的 block | 將 `pipeline.subprocess` + `tools.http_get` + 對外動作(含創作範例的**發佈 block**)路由經 phantom-mesh **governor 閘門**;flight-recorder 執行記錄;高風險步驟手機 approve/deny。*§開源生態 中沒有任何專案具備此能力* | 寫:z13/M5 codex→claude;審:acer/ayaneo agy + opencode | 前置=phantom-mesh L1 governor 介面(已存在於主 repo);風險=跨 repo 介面對齊 |
+| Governor 把關的 block | 將 `pipeline.subprocess` + `tools.http_get` + 對外動作(含創作範例的**發佈 block**)路由經 phantom-mesh **governor 閘門**;flight-recorder 執行記錄;高風險步驟手機 approve/deny。*§開源生態 中沒有任何專案具備此能力* | 寫:orchestrator node (Win)/a Mac node codex→claude;審:Win node A/B agy + opencode | 前置=phantom-mesh L1 governor 介面(已存在於主 repo);風險=跨 repo 介面對齊 |
 
 ### 🔴 規劃中(他處宣稱,NOT built)
 
 | 目標 | 具體項 | 在哪做 + 哪 AI | 風險 / 前置 |
 |---|---|---|---|
-| 對外發佈 block | 創作範例(社群)需要的對外發佈(社群平台/聊天通道);**必須走 governor 閘門 + 手機核可**。今日只有 `log_append`、`stdout` | 寫:M5 codex;審:≥2 AI;發布前操作者拍板 | 風險=scope creep + 憑證外洩;憑證走 mesh |
-| 補齊觸發三件套 | `trigger.type=event` 消費真實 mesh 事件(目前只驗形狀);撰寫 cron/webhook/event 矩陣文件 | 寫:M1 codex;審:z13 claude + agy | 前置=確認 mesh event bus 格式;風險低(本地、stdlib) |
+| 對外發佈 block | 創作範例(社群)需要的對外發佈(社群平台/聊天通道);**必須走 governor 閘門 + 手機核可**。今日只有 `log_append`、`stdout` | 寫:a Mac node codex;審:≥2 AI;發布前操作者拍板 | 風險=scope creep + 憑證外洩;憑證走 mesh |
+| 補齊觸發三件套 | `trigger.type=event` 消費真實 mesh 事件(目前只驗形狀);撰寫 cron/webhook/event 矩陣文件 | 寫:a Mac node codex;審:orchestrator node (Win) claude + agy | 前置=確認 mesh event bus 格式;風險低(本地、stdlib) |
 | cluster-aware dispatch | 把重的 block/flow(如影片合成)送到特定 mesh node(GPU box / always-on Pi / 手機)。早期文件曾把「cluster-aware」當差異化吹,實未實作 | — | 🔭 願景;需求驅動 |
 | FTS5 memory 後端 | 把 run records / context 接入 phantom-mesh 記憶 | — | 🔭 願景 |
 | 視覺化編輯器 / marketplace | n8n-style 編輯器、premium templates。未起步 | — | 🔭 願景;見〈刻意不做〉 |
-| 更多對外動作 | email / Slack / Discord / GitHub / Calendar。今日只有 `log_append`、`stdout` | 寫:M5 codex;審:≥2 AI;發布前操作者拍板 | 風險=scope creep;憑證走 mesh 勿外洩 |
+| 更多對外動作 | email / Slack / Discord / GitHub / Calendar。今日只有 `log_append`、`stdout` | 寫:a Mac node codex;審:≥2 AI;發布前操作者拍板 | 風險=scope creep;憑證走 mesh 勿外洩 |
 
 ### 明確尚未建置
 

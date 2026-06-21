@@ -197,7 +197,7 @@ def main():
     print("=" * 80)
 
     print("\n📄 詳細報告已保存至:")
-    print("   - /home/user/Automation_with_AI/DEPENDENCY_AUDIT_REPORT.md")
+    print("   - /path/to/Automation_with_AI/DEPENDENCY_AUDIT_REPORT.md")
 
     print("\n🔧 測試腳本:")
     print("   - check_dependencies.py - 依賴列表檢查")

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 # 基礎目錄
-BASE_DIR = Path("/home/user/Data-Analysis-with-Chatbots/kaggle_solutions")
+BASE_DIR = Path("/path/to/Data-Analysis-with-Chatbots/kaggle_solutions")
 
 # 第八批解決方案 (496個)
 NEW_SOLUTIONS_BATCH_8 = {

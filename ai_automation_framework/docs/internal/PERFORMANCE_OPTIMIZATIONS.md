@@ -7,7 +7,7 @@
 
 ## 1. 數據庫批量操作優化
 
-**文件位置**: `/home/user/Automation_with_AI/ai_automation_framework/tools/advanced_automation.py`
+**文件位置**: `/path/to/Automation_with_AI/ai_automation_framework/tools/advanced_automation.py`
 
 **實現內容**: 在 `DatabaseAutomationTool` 類中添加了 `batch_insert()` 方法
 
@@ -39,7 +39,7 @@ result = db.batch_insert("users", records, batch_size=1000)
 
 ## 2. 多代理並行執行優化
 
-**文件位置**: `/home/user/Automation_with_AI/ai_automation_framework/agents/multi_agent.py`
+**文件位置**: `/path/to/Automation_with_AI/ai_automation_framework/agents/multi_agent.py`
 
 **實現內容**: 在 `MultiAgentSystem` 類中添加了 `parallel_execution()` 異步方法
 
@@ -75,7 +75,7 @@ results = await system.parallel_execution(tasks, agent_mapping)
 
 ## 3. VectorStore 初始化優化
 
-**文件位置**: `/home/user/Automation_with_AI/ai_automation_framework/rag/vector_store.py`
+**文件位置**: `/path/to/Automation_with_AI/ai_automation_framework/rag/vector_store.py`
 
 **實現內容**: 添加 `_initialized` 標誌避免重複初始化
 
@@ -110,7 +110,7 @@ def _initialize(self) -> None:
 
 ## 4. 緩存批量操作優化
 
-**文件位置**: `/home/user/Automation_with_AI/ai_automation_framework/core/cache.py`
+**文件位置**: `/path/to/Automation_with_AI/ai_automation_framework/core/cache.py`
 
 **實現內容**: 在 `LRUCache` 類中添加 `batch_get()` 和 `batch_set()` 方法
 

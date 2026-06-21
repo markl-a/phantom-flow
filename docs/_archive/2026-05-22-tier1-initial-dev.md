@@ -63,7 +63,7 @@ phantom-flow runner :: jobseek-daily.yaml
   name    = jobseek-daily
   version = 1
   mode    = DRY RUN
-  llm_cli = /Users/marklight/.cargo/bin/phantom
+  llm_cli = ~/.cargo/bin/phantom
 --- plan ---
   trigger: cron (0 9 * * *)
   pipeline.scrape_104 -> tools.http_get

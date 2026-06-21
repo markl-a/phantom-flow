@@ -3,7 +3,7 @@
 
 import os
 
-base_dir = "/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/07_special_domains"
+base_dir = "/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/07_special_domains"
 
 # Remaining solutions with comprehensive templates
 solutions = {

@@ -469,7 +469,7 @@ def configure_from_config(container: Container, config: dict) -> None:
 
 ## Examples
 
-See `/home/user/Automation_with_AI/examples/di_container_example.py` for comprehensive examples covering all features.
+See `/path/to/Automation_with_AI/examples/di_container_example.py` for comprehensive examples covering all features.
 
 ## Migration Guide
 

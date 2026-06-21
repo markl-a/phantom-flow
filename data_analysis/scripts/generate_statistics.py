@@ -11,7 +11,7 @@ import json
 
 def count_solutions():
     """統計所有解決方案"""
-    base_dir = Path('/home/user/Data-Analysis-with-Chatbots/kaggle_solutions')
+    base_dir = Path('/path/to/Data-Analysis-with-Chatbots/kaggle_solutions')
 
     stats = {
         'total': 0,
@@ -96,7 +96,7 @@ def generate_report():
     print("=" * 80)
 
     # 生成JSON報告
-    report_file = Path('/home/user/Data-Analysis-with-Chatbots/scripts/solution_stats.json')
+    report_file = Path('/path/to/Data-Analysis-with-Chatbots/scripts/solution_stats.json')
     with open(report_file, 'w', encoding='utf-8') as f:
         json.dump(stats, f, indent=2, ensure_ascii=False)
     print(f"✅ 詳細統計已保存至: {report_file}")
@@ -149,7 +149,7 @@ def generate_markdown_summary():
         markdown += f"| {category} | {chinese_name} | {count} | {percentage:.1f}% |\n"
 
     # 保存Markdown
-    summary_file = Path('/home/user/Data-Analysis-with-Chatbots/SOLUTIONS_SUMMARY.md')
+    summary_file = Path('/path/to/Data-Analysis-with-Chatbots/SOLUTIONS_SUMMARY.md')
     with open(summary_file, 'w', encoding='utf-8') as f:
         f.write(markdown)
 

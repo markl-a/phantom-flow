@@ -1,7 +1,7 @@
 """Expand anomaly detection solutions to meet line requirements"""
 
 # Read and count existing lines
-base_path = "/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/10_anomaly_detection"
+base_path = "/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/10_anomaly_detection"
 
 # For solutions 17-30, add comprehensive implementations
 expansions = {}

@@ -2,7 +2,7 @@
 
 ## 概述
 
-本报告详细说明了对 `/home/user/Automation_with_AI` 项目实施的安全修复。所有修复都已实施并验证,保持了向后兼容性,同时添加了必要的安全层。
+本报告详细说明了对 `/path/to/Automation_with_AI` 项目实施的安全修复。所有修复都已实施并验证,保持了向后兼容性,同时添加了必要的安全层。
 
 ---
 
@@ -147,7 +147,7 @@ result = db.execute_query("CREATE TABLE users (id INTEGER)", skip_validation=Tru
 result = FileSystemTool.read_file("/tmp/test.txt")
 
 # 配置允许的基目录
-FileSystemTool.ALLOWED_BASE_DIRS = ["/tmp", "/home/user/data"]
+FileSystemTool.ALLOWED_BASE_DIRS = ["/tmp", "/path/to/data"]
 
 # ✓ 允许: 在允许的目录内
 result = FileSystemTool.read_file("/tmp/test.txt")
@@ -315,8 +315,8 @@ logger.debug(f"Raw credentials: {credentials}")  # 即使有过滤器也应避�
 
 已创建测试脚本验证所有安全修复:
 
-- `/home/user/Automation_with_AI/test_security_fixes.py` - 功能测试
-- `/home/user/Automation_with_AI/test_security_simple.py` - 代码审查
+- `/path/to/Automation_with_AI/test_security_fixes.py` - 功能测试
+- `/path/to/Automation_with_AI/test_security_simple.py` - 代码审查
 
 运行测试:
 ```bash

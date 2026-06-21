@@ -4,7 +4,7 @@
 
 ### 1. 创建工具基类和元数据 ✓
 
-**文件位置**: `/home/user/Automation_with_AI/ai_automation_framework/core/tool_registry.py`
+**文件位置**: `/path/to/Automation_with_AI/ai_automation_framework/core/tool_registry.py`
 
 **创建的核心类**:
 
@@ -50,7 +50,7 @@
 
 ### 2. 迁移现有工具作为示例 ✓
 
-**文件位置**: `/home/user/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py`
+**文件位置**: `/path/to/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py`
 
 **迁移的工具**: `CalculatorToolV2`
 
@@ -79,7 +79,7 @@
 
 ### 3. 更新 core/__init__.py ✓
 
-**文件位置**: `/home/user/Automation_with_AI/ai_automation_framework/core/__init__.py`
+**文件位置**: `/path/to/Automation_with_AI/ai_automation_framework/core/__init__.py`
 
 **添加的导出**:
 ```python
@@ -109,7 +109,7 @@ from ai_automation_framework.core import BaseTool, ToolMetadata, get_tool_regist
 
 ### 4. 创建工具系统文档 ✓
 
-**文件位置**: `/home/user/Automation_with_AI/docs/TOOL_SYSTEM.md`
+**文件位置**: `/path/to/Automation_with_AI/docs/TOOL_SYSTEM.md`
 
 **文档内容**:
 
@@ -132,7 +132,7 @@ from ai_automation_framework.core import BaseTool, ToolMetadata, get_tool_regist
 
 ## 测试验证
 
-**测试文件**: `/home/user/Automation_with_AI/test_tool_system.py`
+**测试文件**: `/path/to/Automation_with_AI/test_tool_system.py`
 
 **测试覆盖**:
 1. ✓ 导入工具系统组件
@@ -280,11 +280,11 @@ if response.choices[0].message.get("function_call"):
 
 | 文件路径 | 类型 | 大小 | 描述 |
 |---------|------|------|------|
-| `/home/user/Automation_with_AI/ai_automation_framework/core/tool_registry.py` | 源代码 | 12KB | 工具系统核心类 |
-| `/home/user/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py` | 源代码 | 13KB | 示例工具实现 |
-| `/home/user/Automation_with_AI/ai_automation_framework/core/__init__.py` | 源代码 | - | 更新了导出 |
-| `/home/user/Automation_with_AI/docs/TOOL_SYSTEM.md` | 文档 | 17KB | 完整使用文档 |
-| `/home/user/Automation_with_AI/test_tool_system.py` | 测试 | - | 测试脚本 |
+| `/path/to/Automation_with_AI/ai_automation_framework/core/tool_registry.py` | 源代码 | 12KB | 工具系统核心类 |
+| `/path/to/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py` | 源代码 | 13KB | 示例工具实现 |
+| `/path/to/Automation_with_AI/ai_automation_framework/core/__init__.py` | 源代码 | - | 更新了导出 |
+| `/path/to/Automation_with_AI/docs/TOOL_SYSTEM.md` | 文档 | 17KB | 完整使用文档 |
+| `/path/to/Automation_with_AI/test_tool_system.py` | 测试 | - | 测试脚本 |
 
 ---
 

@@ -235,4 +235,4 @@ processor.run('https://api.example.com/data', 'output.csv')
 
 ## 更多信息
 
-詳細文檔請參考: `/home/user/Data-Analysis-with-Chatbots/docs/PERFORMANCE_MONITORING.md`
+詳細文檔請參考: `/path/to/Data-Analysis-with-Chatbots/docs/PERFORMANCE_MONITORING.md`

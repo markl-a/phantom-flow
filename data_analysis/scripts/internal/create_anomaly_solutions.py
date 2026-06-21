@@ -429,7 +429,7 @@ if __name__ == "__main__":
 
 # Write the solution
 for folder, content in SOLUTIONS.items():
-    filepath = f"/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/10_anomaly_detection/{folder}/solution.py"
+    filepath = f"/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/10_anomaly_detection/{folder}/solution.py"
     with open(filepath, 'w') as f:
         f.write(content)
     print(f"Created {filepath}")

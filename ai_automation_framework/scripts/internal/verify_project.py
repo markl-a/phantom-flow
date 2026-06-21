@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 # 設置專案根目錄
-PROJECT_ROOT = Path("/home/user/Automation_with_AI")
+PROJECT_ROOT = Path("/path/to/Automation_with_AI")
 sys.path.insert(0, str(PROJECT_ROOT))
 
 

@@ -486,14 +486,14 @@ def test_my_function():
 
 完整示例請參考：
 
-- **模塊測試**: `/home/user/Data-Analysis-with-Chatbots/src/data_analysis_chatbots/utils/performance.py`
+- **模塊測試**: `/path/to/Data-Analysis-with-Chatbots/src/data_analysis_chatbots/utils/performance.py`
 
   運行內置示例：
   ```bash
   python src/data_analysis_chatbots/utils/performance.py
   ```
 
-- **實際應用示例**: `/home/user/Data-Analysis-with-Chatbots/examples/performance_monitoring_demo.py`
+- **實際應用示例**: `/path/to/Data-Analysis-with-Chatbots/examples/performance_monitoring_demo.py`
 
   運行完整演示：
   ```bash

@@ -14,7 +14,7 @@ import re
 class EnhancedValidator:
     """增強版驗證器"""
 
-    def __init__(self, base_dir: str = "/home/user/Data-Analysis-with-Chatbots/kaggle_solutions"):
+    def __init__(self, base_dir: str = "/path/to/Data-Analysis-with-Chatbots/kaggle_solutions"):
         self.base_dir = Path(base_dir)
         self.results = {
             'total': 0,
@@ -263,7 +263,7 @@ class EnhancedValidator:
 
     def _generate_detailed_report(self):
         """生成詳細報告"""
-        report_path = Path('/home/user/Data-Analysis-with-Chatbots/scripts/enhanced_validation_report.txt')
+        report_path = Path('/path/to/Data-Analysis-with-Chatbots/scripts/enhanced_validation_report.txt')
 
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write("=" * 80 + "\n")

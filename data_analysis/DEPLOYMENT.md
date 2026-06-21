@@ -490,9 +490,9 @@ After=network.target
 Type=simple
 User=dacapp
 Group=dacapp
-WorkingDirectory=/home/dacapp/Data-Analysis-with-Chatbots
-Environment="PATH=/home/dacapp/Data-Analysis-with-Chatbots/venv/bin"
-ExecStart=/home/dacapp/Data-Analysis-with-Chatbots/venv/bin/streamlit run app.py \
+WorkingDirectory=/path/to/Data-Analysis-with-Chatbots
+Environment="PATH=/path/to/Data-Analysis-with-Chatbots/venv/bin"
+ExecStart=/path/to/Data-Analysis-with-Chatbots/venv/bin/streamlit run app.py \
     --server.port=8501 \
     --server.address=127.0.0.1 \
     --server.headless=true \

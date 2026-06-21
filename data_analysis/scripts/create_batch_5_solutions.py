@@ -495,7 +495,7 @@ solution.visualize(metrics)
 
 def create_all_solutions():
     """創建所有解決方案"""
-    base_dir = Path('/home/user/Data-Analysis-with-Chatbots/kaggle_solutions')
+    base_dir = Path('/path/to/Data-Analysis-with-Chatbots/kaggle_solutions')
 
     total_created = 0
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 # 基礎目錄
-BASE_DIR = Path("/home/user/Data-Analysis-with-Chatbots/kaggle_solutions")
+BASE_DIR = Path("/path/to/Data-Analysis-with-Chatbots/kaggle_solutions")
 
 # 第七批解決方案 (300個)
 # 前11個類別各18個，後6個類別各17個

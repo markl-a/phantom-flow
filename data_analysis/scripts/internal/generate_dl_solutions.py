@@ -5,7 +5,7 @@ Script to generate comprehensive deep learning solution files
 
 import os
 
-BASE_DIR = "/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/08_deep_learning"
+BASE_DIR = "/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/08_deep_learning"
 
 # Template generators for each solution type
 def generate_dropout_variants():

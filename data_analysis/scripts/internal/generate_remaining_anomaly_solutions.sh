@@ -2,7 +2,7 @@
 
 # This script generates all remaining anomaly detection solutions (17-30)
 
-BASE_DIR="/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/10_anomaly_detection"
+BASE_DIR="/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/10_anomaly_detection"
 
 # Function to create a solution file
 create_solution() {

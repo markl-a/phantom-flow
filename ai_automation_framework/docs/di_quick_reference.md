@@ -157,6 +157,6 @@ def test_service():
 
 ## See Also
 
-- Full documentation: `/home/user/Automation_with_AI/docs/dependency_injection.md`
-- Examples: `/home/user/Automation_with_AI/examples/di_container_example.py`
-- Tests: `/home/user/Automation_with_AI/test_di_basic.py`
+- Full documentation: `/path/to/Automation_with_AI/docs/dependency_injection.md`
+- Examples: `/path/to/Automation_with_AI/examples/di_container_example.py`
+- Tests: `/path/to/Automation_with_AI/test_di_basic.py`

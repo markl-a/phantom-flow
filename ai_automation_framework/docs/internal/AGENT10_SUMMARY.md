@@ -196,7 +196,7 @@ python final_dependency_check.py
 
 ### 文件位置
 ```
-/home/user/Automation_with_AI/
+/path/to/Automation_with_AI/
 ├── DEPENDENCY_AUDIT_REPORT.md         ← 詳細報告
 ├── AGENT10_SUMMARY.md                 ← 本摘要
 ├── check_dependencies.py              ← 依賴檢查

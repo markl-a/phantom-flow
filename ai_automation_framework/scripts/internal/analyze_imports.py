@@ -114,7 +114,7 @@ def main():
     print("  導入依賴分析報告")
     print("=" * 80)
 
-    root_dir = '/home/user/Automation_with_AI/ai_automation_framework'
+    root_dir = '/path/to/Automation_with_AI/ai_automation_framework'
     results = analyze_project_imports(root_dir)
 
     print("\n" + "─" * 80)

@@ -286,7 +286,7 @@ See the example files:
 
 ## File Location
 
-**Main file:** `/home/user/Automation_with_AI/ai_automation_framework/core/validation.py`
+**Main file:** `/path/to/Automation_with_AI/ai_automation_framework/core/validation.py`
 
 **Lines of code:** 1042
 

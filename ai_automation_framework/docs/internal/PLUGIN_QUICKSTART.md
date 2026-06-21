@@ -96,7 +96,7 @@ python3 examples/test_plugin_dependencies.py
 
 ## Documentation
 
-See `/home/user/Automation_with_AI/docs/PLUGIN_SYSTEM.md` for complete documentation.
+See `/path/to/Automation_with_AI/docs/PLUGIN_SYSTEM.md` for complete documentation.
 
 ## API Quick Reference
 

@@ -8,7 +8,7 @@ Dependency Check Script
 
 def check_dependencies():
     """檢查依賴"""
-    with open('/home/user/Automation_with_AI/requirements.txt', 'r') as f:
+    with open('/path/to/Automation_with_AI/requirements.txt', 'r') as f:
         requirements = f.read()
 
     print("=" * 80)

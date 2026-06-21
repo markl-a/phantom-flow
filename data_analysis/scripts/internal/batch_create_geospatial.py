@@ -332,7 +332,7 @@ if __name__ == "__main__":
 def create_solution(folder_name, info):
     """Create a solution file from template"""
     # Create directory
-    base_path = "/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/12_geospatial"
+    base_path = "/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/12_geospatial"
     folder_path = os.path.join(base_path, folder_name)
     os.makedirs(folder_path, exist_ok=True)
 

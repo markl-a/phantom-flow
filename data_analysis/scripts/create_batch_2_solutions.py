@@ -361,7 +361,7 @@ def create_class_name(solution_id: str) -> str:
 
 def main():
     """主函數"""
-    base_dir = Path('/home/user/Data-Analysis-with-Chatbots/kaggle_solutions')
+    base_dir = Path('/path/to/Data-Analysis-with-Chatbots/kaggle_solutions')
 
     print("開始創建第二批100個Kaggle解決方案...")
     print("=" * 80)

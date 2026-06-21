@@ -465,7 +465,7 @@ class MyTool(BaseTool):
 
 ## 示例：完整的工具实现
 
-参考 `/home/user/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py` 获取完整的工具实现示例。
+参考 `/path/to/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py` 获取完整的工具实现示例。
 
 这个示例展示了：
 - 完整的工具类实现
@@ -613,10 +613,10 @@ class MyService:
 
 ## 相关资源
 
-- [BaseTool 源码](/home/user/Automation_with_AI/ai_automation_framework/core/tool_registry.py)
-- [Calculator V2 示例](/home/user/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py)
-- [核心组件文档](/home/user/Automation_with_AI/docs/API_REFERENCE.md)
-- [依赖注入系统](/home/user/Automation_with_AI/docs/dependency_injection.md)
+- [BaseTool 源码](/path/to/Automation_with_AI/ai_automation_framework/core/tool_registry.py)
+- [Calculator V2 示例](/path/to/Automation_with_AI/ai_automation_framework/tools/calculator_v2.py)
+- [核心组件文档](/path/to/Automation_with_AI/docs/API_REFERENCE.md)
+- [依赖注入系统](/path/to/Automation_with_AI/docs/dependency_injection.md)
 
 ## 更新日志
 

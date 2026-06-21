@@ -1,7 +1,7 @@
 # 可扩展性改进报告
 
 ## 概述
-作为可扩展性 Agent，我成功地为 `/home/user/Automation_with_AI` 项目实现了多项架构改进，提升了系统的可扩展性和可维护性。
+作为可扩展性 Agent，我成功地为 `/path/to/Automation_with_AI` 项目实现了多项架构改进，提升了系统的可扩展性和可维护性。
 
 ---
 
@@ -9,7 +9,7 @@
 
 ### 1. LLM 客户端工厂模式 ✅
 
-**位置**: `/home/user/Automation_with_AI/ai_automation_framework/llm/factory.py`
+**位置**: `/path/to/Automation_with_AI/ai_automation_framework/llm/factory.py`
 
 **创建的类**:
 - `LLMClientFactory` - 工厂模式实现，用于管理和创建 LLM 客户端
@@ -62,7 +62,7 @@ LLMClientFactory.register_provider("custom", CustomLLMClient)
 
 ### 2. 更新的 LLM 模块初始化 ✅
 
-**位置**: `/home/user/Automation_with_AI/ai_automation_framework/llm/__init__.py`
+**位置**: `/path/to/Automation_with_AI/ai_automation_framework/llm/__init__.py`
 
 **改进内容**:
 - 导入 `LLMClientFactory` 和 `create_llm_client`
@@ -85,7 +85,7 @@ client = llm.create_llm_client("openai", model="gpt-4")
 
 ### 3. 统一的工作流集成适配器基类 ✅
 
-**位置**: `/home/user/Automation_with_AI/ai_automation_framework/integrations/base_adapter.py`
+**位置**: `/path/to/Automation_with_AI/ai_automation_framework/integrations/base_adapter.py`
 
 **创建的类**:
 
@@ -195,7 +195,7 @@ adapter = AdapterRegistry.create("myworkflow", base_url="https://example.com")
 
 ### 4. 事件系统验证 ✅
 
-**位置**: `/home/user/Automation_with_AI/ai_automation_framework/core/events.py`
+**位置**: `/path/to/Automation_with_AI/ai_automation_framework/core/events.py`
 
 **验证结果**: 事件系统已经完全实现了所有需要的功能！
 
@@ -295,7 +295,7 @@ await bus.publish_async(
 
 ## 更新的模块导出
 
-### `/home/user/Automation_with_AI/ai_automation_framework/integrations/__init__.py`
+### `/path/to/Automation_with_AI/ai_automation_framework/integrations/__init__.py`
 
 更新了导出列表，包含所有新的基类和工具：
 ```python
@@ -491,17 +491,17 @@ bus.subscribe(
 ## 文件清单
 
 ### 新创建的文件:
-1. `/home/user/Automation_with_AI/ai_automation_framework/llm/factory.py` (326 行)
-2. `/home/user/Automation_with_AI/ai_automation_framework/integrations/base_adapter.py` (547 行)
-3. `/home/user/Automation_with_AI/SCALABILITY_IMPROVEMENTS.md` (本文件)
+1. `/path/to/Automation_with_AI/ai_automation_framework/llm/factory.py` (326 行)
+2. `/path/to/Automation_with_AI/ai_automation_framework/integrations/base_adapter.py` (547 行)
+3. `/path/to/Automation_with_AI/SCALABILITY_IMPROVEMENTS.md` (本文件)
 
 ### 修改的文件:
-1. `/home/user/Automation_with_AI/ai_automation_framework/llm/__init__.py`
+1. `/path/to/Automation_with_AI/ai_automation_framework/llm/__init__.py`
    - 添加工厂导入
    - 添加自动注册函数
    - 更新 __all__ 列表
 
-2. `/home/user/Automation_with_AI/ai_automation_framework/integrations/__init__.py`
+2. `/path/to/Automation_with_AI/ai_automation_framework/integrations/__init__.py`
    - 添加基类导入
    - 更新 __all__ 列表
 

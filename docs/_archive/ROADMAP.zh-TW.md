@@ -75,16 +75,16 @@ flowchart TD
 
 ## ③ 分期表
 
-排序依**單人多機開發模型**（z13 / M5 / M1 / acer / ayaneo / Android；
+排序依**單人多機開發模型**（orchestrator node (Win) / Win node A / Win node B / Mac node A / Mac node B / an Android worker；
 寫＝codex/claude，審≥2 個不同 AI，governor + 雙閘 → 手機）：
 **便宜高值先、護城河先；需外部整合／操作者決策的後做。**
 
 | 階段 | 目標 | 具體項（2–4，grounded） | 在哪台機 + 哪 AI | 風險／前置 |
 |---|---|---|---|---|
-| **P1 🏰 鎖護城河** | 讓流程「受治理」 | (a) `pipeline.subprocess`/`tools.http_get`/對外動作 走 governor 閘門；(b) 飛行記錄器 run records；(c) 高風險步驟手機 approve/deny | 寫：z13/M5 codex→claude；審：acer/ayaneo agy + opencode | 前置＝phantom-mesh L1 governor 介面（已存在於主 repo）；風險＝跨 repo 介面對齊 |
-| **P2 📅 補齊觸發三件組** | cron ✅ + webhook ✅ + **event** | (a) `trigger.type=event` 消費 mesh 真事件（目前只驗 shape）；(b) 文件化 cron/webhook/event 矩陣 | 寫：M1 codex；審：z13 claude + agy | 前置＝確認 mesh event bus 格式；風險低（在地、stdlib） |
-| **P3 🚧 按需包工具** | staged source → 真 block | (a) 挑 2–3 個最常用的 `ai_automation_framework` 工具寫 adapter block（各附測試）；(b) 或 1 個 `data_analysis` block | 寫：acer codex（逐檔）；審：z13 claude + ayaneo opencode | 前置＝**license scrub**（vendored 含他人碼，確認相容 Apache-2.0）；風險＝為包而包→需真 flow 驅動 |
-| **P4 🔭 觸及（操作者把關）** | 少數真・對外動作 | (a) email + 一個聊天通道（Telegram/LINE，重用 phantom-mesh notifier）；(b) **僅當有真 flow 需要才做** | 寫：M5 codex；審：≥2 AI；發布前操作者拍板 | 風險＝scope creep；前置＝憑證/金鑰管理走 mesh，勿外洩 |
+| **P1 🏰 鎖護城河** | 讓流程「受治理」 | (a) `pipeline.subprocess`/`tools.http_get`/對外動作 走 governor 閘門；(b) 飛行記錄器 run records；(c) 高風險步驟手機 approve/deny | 寫：orchestrator node (Win)/a Mac node codex→claude；審：Win node A/B agy + opencode | 前置＝phantom-mesh L1 governor 介面（已存在於主 repo）；風險＝跨 repo 介面對齊 |
+| **P2 📅 補齊觸發三件組** | cron ✅ + webhook ✅ + **event** | (a) `trigger.type=event` 消費 mesh 真事件（目前只驗 shape）；(b) 文件化 cron/webhook/event 矩陣 | 寫：a Mac node codex；審：orchestrator node (Win) claude + agy | 前置＝確認 mesh event bus 格式；風險低（在地、stdlib） |
+| **P3 🚧 按需包工具** | staged source → 真 block | (a) 挑 2–3 個最常用的 `ai_automation_framework` 工具寫 adapter block（各附測試）；(b) 或 1 個 `data_analysis` block | 寫：a Windows node codex（逐檔）；審：orchestrator node (Win) claude + a Windows node opencode | 前置＝**license scrub**（vendored 含他人碼，確認相容 Apache-2.0）；風險＝為包而包→需真 flow 驅動 |
+| **P4 🔭 觸及（操作者把關）** | 少數真・對外動作 | (a) email + 一個聊天通道（Telegram/LINE，重用 phantom-mesh notifier）；(b) **僅當有真 flow 需要才做** | 寫：a Mac node codex；審：≥2 AI；發布前操作者拍板 | 風險＝scope creep；前置＝憑證/金鑰管理走 mesh，勿外洩 |
 | **P5 🔭 互通而非克隆**（需求未證實 `[unverified]`） | 與生態系互通 | (a) 接受 n8n/Activepieces 的 inbound webhook；(b) 文件化「從它們呼叫 phantom-flow serve」 | 寫：任一節點 codex；審：claude + agy | 低優先；需操作者確認確有此需求 |
 
 > OSS 選型一律標「**候選方向**」，不直接 vendoring：governor 模式參考

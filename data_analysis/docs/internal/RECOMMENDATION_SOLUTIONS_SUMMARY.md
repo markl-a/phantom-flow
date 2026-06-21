@@ -6,7 +6,7 @@ Created 4 comprehensive recommendation system solutions to complete the collecti
 ## Solutions Created
 
 ### 1. Solution 22: Context-Aware Recommendations (574 lines)
-**Location:** `/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/22_context_aware_recommendations/solution.py`
+**Location:** `/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/22_context_aware_recommendations/solution.py`
 
 **Key Features:**
 - **Factorization Machine** for context-aware recommendations
@@ -36,7 +36,7 @@ Created 4 comprehensive recommendation system solutions to complete the collecti
 ---
 
 ### 2. Solution 23: Session-Based Recommendations (654 lines)
-**Location:** `/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/23_session_based_recommendations/solution.py`
+**Location:** `/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/23_session_based_recommendations/solution.py`
 
 **Key Features:**
 - **Session GRU** with simplified GRU implementation
@@ -67,7 +67,7 @@ Created 4 comprehensive recommendation system solutions to complete the collecti
 ---
 
 ### 3. Solution 24: Multi-Armed Bandits for Recommendations (614 lines)
-**Location:** `/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/24_bandits_recommendations/solution.py`
+**Location:** `/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/24_bandits_recommendations/solution.py`
 
 **Key Features:**
 - **ε-Greedy** algorithm with exploration rate
@@ -104,7 +104,7 @@ Created 4 comprehensive recommendation system solutions to complete the collecti
 ---
 
 ### 4. Solution 25: Explainable Recommendations (592 lines)
-**Location:** `/home/user/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/25_explainable_recommendations/solution.py`
+**Location:** `/path/to/Data-Analysis-with-Chatbots/kaggle_solutions/04_recommendation/25_explainable_recommendations/solution.py`
 
 **Key Features:**
 - **LIME-style explanations** for recommendations

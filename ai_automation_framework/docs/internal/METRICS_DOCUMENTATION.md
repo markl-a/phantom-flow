@@ -431,10 +431,10 @@ python3 examples/metrics_usage_example.py
 
 ## Files Created
 
-- `/home/user/Automation_with_AI/ai_automation_framework/core/metrics.py` - Main metrics module
-- `/home/user/Automation_with_AI/test_metrics.py` - Comprehensive test suite
-- `/home/user/Automation_with_AI/examples/metrics_usage_example.py` - Usage examples
-- `/home/user/Automation_with_AI/METRICS_DOCUMENTATION.md` - This documentation
+- `/path/to/Automation_with_AI/ai_automation_framework/core/metrics.py` - Main metrics module
+- `/path/to/Automation_with_AI/test_metrics.py` - Comprehensive test suite
+- `/path/to/Automation_with_AI/examples/metrics_usage_example.py` - Usage examples
+- `/path/to/Automation_with_AI/METRICS_DOCUMENTATION.md` - This documentation
 
 ## API Reference
 
