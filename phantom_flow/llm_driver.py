@@ -69,9 +69,18 @@ class PhantomLLM:
         # The previous `phantom event capture --kind llm.complete` form used
         # an unknown flag and silently fell back to a fake stub summary.
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
+        # Optional, env-driven provider override. When PHANTOM_PROVIDER is set
+        # and non-empty, route the call to that provider via `--provider <val>`
+        # inserted right after "exec". Unset/empty leaves the argv unchanged so
+        # default behavior is preserved.
+        argv = [self._cli, "exec"]
+        provider = (os.environ.get("PHANTOM_PROVIDER") or "").strip()
+        if provider:
+            argv += ["--provider", provider]
+        argv.append(full_prompt)
         try:
             proc = subprocess.run(
-                [self._cli, "exec", full_prompt],
+                argv,
                 capture_output=True,
                 encoding="utf-8",
                 errors="replace",

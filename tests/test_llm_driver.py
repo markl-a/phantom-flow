@@ -150,3 +150,58 @@ def test_complete_oserror_falls_back_to_stub(monkeypatch):
     res = PhantomLLM().complete("hello")
     assert res.backend == "stub"
     assert res.error and "exec format error" in res.error.lower()
+
+
+# ---------- optional --provider passthrough ----------
+
+def _argv_capturer(monkeypatch):
+    """Wire up a fake subprocess.run that records the argv it was called with."""
+    monkeypatch.setattr(drv.shutil, "which", lambda _name: "/usr/bin/phantom")
+    monkeypatch.delenv("PHANTOM_FLOW_STUB_LLM", raising=False)
+    captured = {}
+
+    def _capture(cmd, **kw):
+        captured["cmd"] = list(cmd)
+        return _fake_proc(stdout="ok answer", returncode=0)
+
+    monkeypatch.setattr(drv.subprocess, "run", _capture)
+    return captured
+
+
+def test_provider_passthrough_inserts_flag_after_exec(monkeypatch):
+    """PHANTOM_PROVIDER set => `--provider <val>` inserted right after exec."""
+    captured = _argv_capturer(monkeypatch)
+    monkeypatch.setenv("PHANTOM_PROVIDER", "openai")
+
+    res = PhantomLLM().complete("hi")
+    assert res.backend == "phantom"
+    cmd = captured["cmd"]
+    # exec is immediately followed by --provider <value>
+    exec_i = cmd.index("exec")
+    assert cmd[exec_i + 1] == "--provider"
+    assert cmd[exec_i + 2] == "openai"
+    # the prompt is still the final argument
+    assert cmd[-1] == "hi"
+
+
+def test_provider_passthrough_absent_when_unset(monkeypatch):
+    """No PHANTOM_PROVIDER => argv unchanged (no --provider anywhere)."""
+    captured = _argv_capturer(monkeypatch)
+    monkeypatch.delenv("PHANTOM_PROVIDER", raising=False)
+
+    res = PhantomLLM().complete("hi")
+    assert res.backend == "phantom"
+    cmd = captured["cmd"]
+    assert "--provider" not in cmd
+    assert cmd == ["/usr/bin/phantom", "exec", "hi"]
+
+
+def test_provider_passthrough_empty_is_noop(monkeypatch):
+    """Empty/whitespace PHANTOM_PROVIDER must NOT add the flag (default behavior)."""
+    captured = _argv_capturer(monkeypatch)
+    monkeypatch.setenv("PHANTOM_PROVIDER", "   ")
+
+    PhantomLLM().complete("hi")
+    cmd = captured["cmd"]
+    assert "--provider" not in cmd
+    assert cmd == ["/usr/bin/phantom", "exec", "hi"]
