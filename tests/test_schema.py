@@ -124,13 +124,15 @@ def test_run_flow_returns_run_record(monkeypatch):
     assert record.trigger_type == "cron"
     assert record.status == "ok"
     assert record.dry_run is False
-    # one pipeline step -> one StepRecord
-    assert len(record.steps) == 1
+    # one pipeline step + one outbound action -> two StepRecords
+    assert len(record.steps) == 2
     step = record.steps[0]
     assert isinstance(step, StepRecord)
     assert step.id == "count"
     assert step.block == "pipeline.regex_count"
     assert step.status == "ok"
+    assert record.steps[1].id == "outbound:actions.stdout"
+    assert record.steps[1].status == "ok"
     # timestamps present and ordered
     assert record.started_at and record.finished_at
     assert record.finished_at >= record.started_at

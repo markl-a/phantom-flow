@@ -42,10 +42,15 @@ def test_http_get_supports_file_url(tmp_path):
 def test_example_flows_exist():
     assert (EXAMPLES / "local-text-summary.yaml").exists()
     assert (EXAMPLES / "keyword-report.yaml").exists()
+    assert (EXAMPLES / "local-automation-scenario.yaml").exists()
 
 
 def test_example_flows_validate_and_strict_lint():
-    for name in ("local-text-summary.yaml", "keyword-report.yaml"):
+    for name in (
+        "local-text-summary.yaml",
+        "keyword-report.yaml",
+        "local-automation-scenario.yaml",
+    ):
         flow = load_flow(EXAMPLES / name)
         validate_flow(flow)  # must not raise
         summary = run_flow(flow, dry_run=True, strict=True)  # lint, no exec
@@ -82,6 +87,7 @@ def test_local_text_summary_runs_end_to_end_offline(monkeypatch):
     assert summary["record"].status == "ok"
     assert [s.id for s in summary["record"].steps] == [
         "fetch", "count", "filter", "gate", "summary",
+        "outbound:actions.stdout", "outbound:actions.stdout",
     ]
 
 

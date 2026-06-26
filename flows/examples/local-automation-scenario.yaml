@@ -1,0 +1,49 @@
+name: local-automation-scenario
+version: 1
+description: |
+  P3 local automation scenario proof. The flow runs fully offline against a
+  bundled text fixture, plans before execution, blocks a side-effecting local
+  write until approval, then writes a small scenario report after approval.
+
+trigger:
+  type: manual
+
+pipeline:
+  - id: fetch
+    block: tools.http_get
+    url: "${env.PHANTOM_FLOW_SAMPLE}"
+    max_bytes: 51200
+    timeout: 15
+
+  - id: count
+    block: pipeline.regex_count
+    input: "${fetch.body}"
+    pattern: "AI"
+
+  - id: filter
+    block: pipeline.filter
+    input: "${fetch.body}"
+    keywords: "AI, LLM, agent, RAG, MLOps"
+
+  - id: gate
+    block: pipeline.if
+    condition: "${count.value} > 0"
+
+  - id: summary
+    block: pipeline.llm_summarize
+    input: "${fetch.body}"
+    prompt: "Summarise this local automation evidence in 2 short bullets:"
+
+outbound:
+  - id: write_report
+    block: actions.log_append
+    when: "${gate.true}"
+    requires_approval: true
+    risk_reason: writes a local scenario report artifact
+    path: "${env.PHANTOM_FLOW_SCENARIO_LOG}"
+    line: "[local-automation-scenario] AI hits=${count.value} matched=${filter.matched} llm=${summary.backend}"
+
+  - id: print_summary
+    block: actions.stdout
+    when: "${gate.true}"
+    line: "summary: ${summary.summary}"

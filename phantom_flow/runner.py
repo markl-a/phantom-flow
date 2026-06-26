@@ -30,6 +30,7 @@ Run::
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager, redirect_stdout
 import json
 import os
 import re
@@ -41,7 +42,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set
 
 try:
     import yaml  # type: ignore
@@ -73,16 +74,22 @@ class FlowExecutionError(RuntimeError):
     including the failed step, with the underlying exception chained.
     """
 
-    def __init__(self, message: str, record: "RunRecord") -> None:
+    def __init__(self, message: str, record: "RunRecord",
+                 plan: Optional[List[str]] = None) -> None:
         self.record = record
+        self.plan = list(plan or [])
         super().__init__(message)
+
+
+class ApprovalRequiredError(FlowExecutionError):
+    """Raised when an approval-gated step/action is reached without approval."""
 
 
 @dataclass
 class StepRecord:
     id: str
     block: str
-    status: str  # "ok" | "error"
+    status: str  # "ok" | "error" | "blocked"
     error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -102,9 +109,11 @@ class RunRecord:
     started_at: str
     finished_at: str
     steps: List[StepRecord] = field(default_factory=list)
+    run_id: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "run_id": self.run_id,
             "name": self.name,
             "version": self.version,
             "trigger_type": self.trigger_type,
@@ -114,6 +123,127 @@ class RunRecord:
             "finished_at": self.finished_at,
             "steps": [s.to_dict() for s in self.steps],
         }
+
+
+RUN_ARTIFACT_SCHEMA_VERSION = 1
+
+
+def build_run_artifact(summary: Dict[str, Any], *, flow_path: Optional[Path] = None,
+                       error: Optional[str] = None) -> Dict[str, Any]:
+    """Build the stable public run artifact.
+
+    The artifact intentionally records the plan and RunRecord only. It omits
+    the execution context because block outputs may contain fetched content,
+    prompts, subprocess output, or future secret-bearing values.
+    """
+    record = summary["record"]
+    if not isinstance(record, RunRecord):
+        raise TypeError("summary['record'] must be a RunRecord")
+    return {
+        "schema_version": RUN_ARTIFACT_SCHEMA_VERSION,
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "flow": {
+            "name": summary.get("name", record.name),
+            "file": flow_path.name if flow_path else None,
+        },
+        "dry_run": bool(summary.get("dry_run", record.dry_run)),
+        "record": record.to_dict(),
+        "plan": list(summary.get("plan", [])),
+        "error": error,
+    }
+
+
+def write_run_artifact(path: Path, artifact: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
+
+
+STATE_ARTIFACT_SCHEMA_VERSION = 1
+
+
+def _default_run_id() -> str:
+    stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    return f"run-{stamp}-{os.getpid()}"
+
+
+def build_state_artifact(
+    summary: Dict[str, Any],
+    *,
+    run_id: str,
+    flow_path: Optional[Path] = None,
+    approvals: Optional[Set[str]] = None,
+    error: Optional[str] = None,
+) -> Dict[str, Any]:
+    record = summary["record"]
+    if not isinstance(record, RunRecord):
+        raise TypeError("summary['record'] must be a RunRecord")
+    return {
+        "schema_version": STATE_ARTIFACT_SCHEMA_VERSION,
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "run_id": run_id,
+        "flow": {
+            "name": summary.get("name", record.name),
+            "file": flow_path.name if flow_path else None,
+        },
+        "dry_run": bool(summary.get("dry_run", record.dry_run)),
+        "approvals": sorted(approvals or set()),
+        "record": record.to_dict(),
+        "plan": list(summary.get("plan", [])),
+        "error": error,
+    }
+
+
+def write_state_artifacts(state_dir: Path, artifact: Dict[str, Any]) -> None:
+    run_id = str(artifact["run_id"])
+    run_dir = state_dir / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "state.json").write_text(
+        json.dumps(artifact, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    events = []
+    for step in artifact["record"].get("steps", []):
+        events.append(
+            {
+                "schema_version": STATE_ARTIFACT_SCHEMA_VERSION,
+                "run_id": run_id,
+                "step_id": step.get("id"),
+                "block": step.get("block"),
+                "status": step.get("status"),
+                "error": step.get("error"),
+            }
+        )
+    (run_dir / "events.jsonl").write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+    index_entry = {
+        "schema_version": STATE_ARTIFACT_SCHEMA_VERSION,
+        "run_id": run_id,
+        "flow": artifact["flow"],
+        "status": artifact["record"].get("status"),
+        "dry_run": artifact["dry_run"],
+        "state_file": str((Path("runs") / run_id / "state.json").as_posix()),
+        "events_file": str((Path("runs") / run_id / "events.jsonl").as_posix()),
+    }
+    state_dir.mkdir(parents=True, exist_ok=True)
+    with (state_dir / "runs.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(index_entry, sort_keys=True) + "\n")
+
+
+@contextmanager
+def _temporary_env(values: Dict[str, str]) -> Iterator[None]:
+    previous = {key: os.environ.get(key) for key in values}
+    try:
+        for key, value in values.items():
+            os.environ[key] = value
+        yield
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 def validate_flow(flow: Any) -> Dict[str, Any]:
@@ -174,6 +304,28 @@ def validate_flow(flow: Any) -> Dict[str, Any]:
 # ---------- context + variable substitution ----------
 
 _PLACEHOLDER_RE = re.compile(r"\$\{([^}]+)\}")
+_SECRET_QUERY_RE = re.compile(
+    r"(?i)([?&](?:api[_-]?key|token|access[_-]?token|password|secret|signature|auth)=)[^&\s]+"
+)
+_SECRET_ASSIGN_RE = re.compile(
+    r"(?i)\b(api[_-]?key|token|access[_-]?token|password|secret|authorization)\s*[:=]\s*([^\s,;]+)"
+)
+_AUTH_BEARER_ASSIGN_RE = re.compile(
+    r"(?i)\bauthorization\s*[:=]\s*bearer\s+[A-Za-z0-9._~+/=-]+"
+)
+_BEARER_RE = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+")
+
+
+def _redact_error_text(text: str) -> str:
+    text = _AUTH_BEARER_ASSIGN_RE.sub("Authorization: Bearer <redacted>", text)
+    text = _BEARER_RE.sub("Bearer <redacted>", text)
+    text = _SECRET_QUERY_RE.sub(r"\1<redacted>", text)
+    text = _SECRET_ASSIGN_RE.sub(lambda m: f"{m.group(1)}=<redacted>", text)
+    return text
+
+
+def _safe_exception_text(exc: BaseException) -> str:
+    return _redact_error_text(f"{type(exc).__name__}: {exc}")
 
 
 def _resolve(value: Any, ctx: Dict[str, Any]) -> Any:
@@ -448,9 +600,26 @@ def _gate_passes(when: Optional[str], ctx: Dict[str, Any]) -> bool:
     return resolved in {"true", "1", "yes"}
 
 
+def _approval_needed(spec: Dict[str, Any]) -> bool:
+    return bool(spec.get("requires_approval"))
+
+
+def _approval_allowed(identifier: str, block_name: str, approvals: Set[str]) -> bool:
+    return bool({"all", identifier, block_name} & approvals)
+
+
+def _approval_error(identifier: str, block_name: str, reason: Any = None) -> str:
+    msg = f"approval required for {identifier} ({block_name})"
+    if reason:
+        msg += f": {_redact_error_text(str(reason))}"
+    return msg
+
+
 def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
              strict: bool = False, validate: bool = False,
-             initial_ctx: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+             initial_ctx: Optional[Dict[str, Any]] = None,
+             approvals: Optional[Set[str]] = None,
+             run_id: Optional[str] = None) -> Dict[str, Any]:
     """Execute (or, with ``dry_run``, only plan) a flow.
 
     ``strict`` validates that every ``block`` name resolves in
@@ -468,6 +637,8 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
         validate_flow(flow)
 
     ctx: Dict[str, Any] = dict(initial_ctx) if initial_ctx else {}
+    approved = set(approvals or set())
+    effective_run_id = run_id or _default_run_id()
     plan: List[str] = []
     steps: List[StepRecord] = []
     started_at = datetime.now().isoformat(timespec="seconds")
@@ -487,37 +658,64 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
             started_at=started_at,
             finished_at=datetime.now().isoformat(timespec="seconds"),
             steps=steps,
+            run_id=effective_run_id,
         )
 
     for step in flow.get("pipeline", []):
         sid = step.get("id") or step.get("block", "?")
         block_name = step.get("block", "?")
-        plan.append(f"pipeline.{sid} -> {block_name}")
+        needs_approval = _approval_needed(step)
+        plan.append(
+            f"pipeline.{sid} -> {block_name}"
+            + (" [requires approval]" if needs_approval else "")
+        )
         if strict and block_name not in BLOCK_REGISTRY:
             raise KeyError(f"unknown block: {block_name}")
         if dry_run:
             continue
         fn = BLOCK_REGISTRY.get(block_name)
         if fn is None:
-            raise KeyError(f"unknown block: {block_name}")
+            safe_error = f"unknown block: {block_name}"
+            steps.append(StepRecord(id=str(sid), block=block_name, status="error",
+                                    error=safe_error))
+            raise FlowExecutionError(
+                f"pipeline step {sid!r} ({block_name}) failed: {safe_error}",
+                _finish("error"),
+                plan,
+            )
+        if needs_approval and not _approval_allowed(str(sid), block_name, approved):
+            safe_error = _approval_error(str(sid), block_name, step.get("risk_reason"))
+            steps.append(StepRecord(id=str(sid), block=block_name, status="blocked",
+                                    error=safe_error))
+            raise ApprovalRequiredError(
+                f"pipeline step {sid!r} ({block_name}) blocked: {safe_error}",
+                _finish("blocked"),
+                plan,
+            )
         spec = _resolve({k: v for k, v in step.items()
-                         if k not in {"id", "block"}}, ctx)
+                         if k not in {"id", "block", "requires_approval",
+                                      "risk_reason"}}, ctx)
         try:
             ctx[sid] = fn(spec, ctx)
         except Exception as exc:  # noqa: BLE001 - record then re-surface
+            safe_error = _safe_exception_text(exc)
             steps.append(StepRecord(id=sid, block=block_name, status="error",
-                                    error=f"{type(exc).__name__}: {exc}"))
+                                    error=safe_error))
             raise FlowExecutionError(
-                f"pipeline step {sid!r} ({block_name}) failed: {exc}",
+                f"pipeline step {sid!r} ({block_name}) failed: {safe_error}",
                 _finish("error"),
+                plan,
             ) from exc
         steps.append(StepRecord(id=sid, block=block_name, status="ok"))
 
     for action in flow.get("outbound", []):
+        action_id = str(action.get("id") or f"outbound:{action.get('block', '?')}")
         block_name = action.get("block", "?")
         when = action.get("when")
+        needs_approval = _approval_needed(action)
         plan.append(f"outbound -> {block_name}"
-                    + (f"  [gated by {when}]" if when else ""))
+                    + (f"  [gated by {when}]" if when else "")
+                    + (" [requires approval]" if needs_approval else ""))
         if strict and block_name not in BLOCK_REGISTRY:
             raise KeyError(f"unknown action: {block_name}")
         if dry_run:
@@ -526,19 +724,38 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
             continue
         fn = BLOCK_REGISTRY.get(block_name)
         if fn is None:
-            raise KeyError(f"unknown action: {block_name}")
+            safe_error = f"unknown action: {block_name}"
+            steps.append(StepRecord(id=action_id, block=block_name,
+                                    status="error", error=safe_error))
+            raise FlowExecutionError(
+                f"outbound action {block_name} failed: {safe_error}",
+                _finish("error"),
+                plan,
+            )
+        if needs_approval and not _approval_allowed(action_id, block_name, approved):
+            safe_error = _approval_error(action_id, block_name, action.get("risk_reason"))
+            steps.append(StepRecord(id=action_id, block=block_name, status="blocked",
+                                    error=safe_error))
+            raise ApprovalRequiredError(
+                f"outbound action {block_name} blocked: {safe_error}",
+                _finish("blocked"),
+                plan,
+            )
         spec = _resolve({k: v for k, v in action.items()
-                         if k not in {"block", "when"}}, ctx)
+                         if k not in {"id", "block", "when",
+                                      "requires_approval", "risk_reason"}}, ctx)
         try:
             fn(spec, ctx)
         except Exception as exc:  # noqa: BLE001 - record then re-surface
-            steps.append(StepRecord(id=f"outbound:{block_name}",
-                                    block=block_name, status="error",
-                                    error=f"{type(exc).__name__}: {exc}"))
+            safe_error = _safe_exception_text(exc)
+            steps.append(StepRecord(id=action_id, block=block_name, status="error",
+                                    error=safe_error))
             raise FlowExecutionError(
-                f"outbound action {block_name} failed: {exc}",
+                f"outbound action {block_name} failed: {safe_error}",
                 _finish("error"),
+                plan,
             ) from exc
+        steps.append(StepRecord(id=action_id, block=block_name, status="ok"))
 
     record = _finish("ok")
     return {"plan": plan, "context": ctx, "dry_run": dry_run,
@@ -608,6 +825,212 @@ def schedule_matches(expr: str, dt: datetime) -> bool:
 
 
 # ---------- CLI ----------
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def _approval_gate_ids(flow: Dict[str, Any]) -> List[str]:
+    ids: List[str] = []
+    for step in flow.get("pipeline", []):
+        if isinstance(step, dict) and _approval_needed(step):
+            ids.append(str(step.get("id") or step.get("block", "?")))
+    for action in flow.get("outbound", []):
+        if isinstance(action, dict) and _approval_needed(action):
+            ids.append(str(action.get("id") or f"outbound:{action.get('block', '?')}"))
+    return ids
+
+
+def _run_and_write_artifact(
+    flow: Dict[str, Any],
+    *,
+    flow_path: Path,
+    artifact_path: Path,
+    dry_run: bool,
+    strict: bool,
+    approvals: Set[str],
+    run_id: str,
+    state_dir: Optional[Path],
+) -> Dict[str, Any]:
+    error_text: Optional[str] = None
+    try:
+        summary = run_flow(
+            flow,
+            dry_run=dry_run,
+            strict=strict,
+            approvals=approvals,
+            run_id=run_id,
+        )
+        exit_code = 0
+    except ApprovalRequiredError as exc:
+        error_text = str(exc)
+        summary = {
+            "name": exc.record.name,
+            "dry_run": dry_run,
+            "record": exc.record,
+            "plan": exc.plan,
+        }
+        exit_code = 3
+    except FlowExecutionError as exc:
+        error_text = str(exc)
+        summary = {
+            "name": exc.record.name,
+            "dry_run": dry_run,
+            "record": exc.record,
+            "plan": exc.plan,
+        }
+        exit_code = 1
+
+    artifact = build_run_artifact(summary, flow_path=flow_path, error=error_text)
+    write_run_artifact(artifact_path, artifact)
+    if state_dir:
+        write_state_artifacts(
+            state_dir,
+            build_state_artifact(
+                summary,
+                run_id=run_id,
+                flow_path=flow_path,
+                approvals=approvals,
+                error=error_text,
+            ),
+        )
+    return {"exit_code": exit_code, "artifact": artifact}
+
+
+def _scenario_main(argv: List[str]) -> int:
+    root = _repo_root()
+    default_flow = root / "flows" / "examples" / "local-automation-scenario.yaml"
+    default_sample = root / "flows" / "samples" / "ai-jobs-sample.txt"
+    parser = argparse.ArgumentParser(
+        prog="phantom-flow scenario",
+        description="Run the local automation scenario proof and write evidence artifacts.",
+    )
+    parser.add_argument("flow", nargs="?", default=str(default_flow),
+                        help="approval-gated flow YAML to exercise")
+    parser.add_argument("--sample", type=Path, default=default_sample,
+                        help="local text fixture exposed as PHANTOM_FLOW_SAMPLE")
+    parser.add_argument("--out-dir", type=Path,
+                        default=Path("artifacts") / "local-automation-scenario",
+                        help="directory for plan/blocked/approved artifacts")
+    parser.add_argument("--approve", action="append", default=[],
+                        help="approval id for the approved run (default: all gates in the flow)")
+    parser.add_argument("--run-id-prefix", default="local-automation-scenario",
+                        help="stable prefix for state/log run ids")
+    args = parser.parse_args(argv)
+
+    flow_path = Path(args.flow).expanduser().resolve()
+    sample_path = args.sample.expanduser().resolve()
+    out_dir = args.out_dir.expanduser().resolve()
+    state_dir = out_dir / "state"
+    scenario_log = out_dir / "scenario.log"
+    stdout_log = out_dir / "stdout.log"
+
+    if not flow_path.exists():
+        print(f"error: flow file not found: {flow_path}", file=sys.stderr)
+        return 2
+    if not sample_path.exists():
+        print(f"error: sample file not found: {sample_path}", file=sys.stderr)
+        return 2
+
+    try:
+        flow = load_flow(flow_path)
+        validate_flow(flow)
+    except FlowValidationError as exc:
+        print(f"error: invalid flow {flow_path.name}:", file=sys.stderr)
+        for problem in exc.errors:
+            print(f"  - {problem}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # pragma: no cover
+        print(f"error: failed to load {flow_path}: {exc}", file=sys.stderr)
+        return 2
+
+    approval_ids = _approval_gate_ids(flow)
+    if not approval_ids:
+        print("error: scenario flows must include at least one requires_approval gate",
+              file=sys.stderr)
+        return 2
+
+    approvals = set(args.approve or approval_ids)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    env = {
+        "PHANTOM_FLOW_SAMPLE": sample_path.as_uri(),
+        "PHANTOM_FLOW_STUB_LLM": "1",
+        "PHANTOM_FLOW_SCENARIO_LOG": str(scenario_log),
+    }
+    with _temporary_env(env), stdout_log.open("w", encoding="utf-8") as stdout_fh:
+        plan = _run_and_write_artifact(
+            flow,
+            flow_path=flow_path,
+            artifact_path=out_dir / "plan.json",
+            dry_run=True,
+            strict=True,
+            approvals=set(),
+            run_id=f"{args.run_id_prefix}-plan",
+            state_dir=state_dir,
+        )
+        with redirect_stdout(stdout_fh):
+            blocked = _run_and_write_artifact(
+                flow,
+                flow_path=flow_path,
+                artifact_path=out_dir / "blocked.json",
+                dry_run=False,
+                strict=True,
+                approvals=set(),
+                run_id=f"{args.run_id_prefix}-blocked",
+                state_dir=state_dir,
+            )
+            approved = _run_and_write_artifact(
+                flow,
+                flow_path=flow_path,
+                artifact_path=out_dir / "approved.json",
+                dry_run=False,
+                strict=True,
+                approvals=approvals,
+                run_id=f"{args.run_id_prefix}-approved",
+                state_dir=state_dir,
+            )
+
+    ok = (
+        plan["exit_code"] == 0
+        and blocked["exit_code"] == 3
+        and approved["exit_code"] == 0
+    )
+    summary = {
+        "schema_version": 1,
+        "status": "ok" if ok else "error",
+        "flow": {"name": flow.get("name", "?"), "file": flow_path.name},
+        "sample": sample_path.name,
+        "approvals": sorted(approvals),
+        "artifacts": {
+            "plan": "plan.json",
+            "blocked": "blocked.json",
+            "approved": "approved.json",
+            "state_dir": "state",
+            "scenario_log": "scenario.log",
+            "stdout_log": "stdout.log",
+        },
+        "phase_results": {
+            "plan": {
+                "exit_code": plan["exit_code"],
+                "record_status": plan["artifact"]["record"]["status"],
+            },
+            "blocked": {
+                "exit_code": blocked["exit_code"],
+                "record_status": blocked["artifact"]["record"]["status"],
+            },
+            "approved": {
+                "exit_code": approved["exit_code"],
+                "record_status": approved["artifact"]["record"]["status"],
+            },
+        },
+    }
+    (out_dir / "scenario-summary.json").write_text(
+        json.dumps(summary, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0 if ok else 1
 
 def _flow_webhook_path(flow):
     """Return the flow's webhook trigger URL path, or None if the flow is not a webhook flow."""
@@ -746,9 +1169,15 @@ def _main(argv: Optional[List[str]] = None) -> int:
         return _serve_main(argv[1:])
     if argv and argv[0] == "schedule":
         return _schedule_main(argv[1:])
+    if argv and argv[0] == "scenario":
+        return _scenario_main(argv[1:])
 
-    parser = argparse.ArgumentParser(prog="phantom_flow.runner",
-                                     description="Minimal YAML flow executor.")
+    parser = argparse.ArgumentParser(
+        prog="phantom_flow.runner",
+        description=(
+            "Minimal YAML flow executor. Subcommands: serve, schedule, scenario."
+        ),
+    )
     parser.add_argument("flow", help="path to flow YAML")
     parser.add_argument("--dry-run", action="store_true",
                         help="parse + plan only; no network / no filesystem writes")
@@ -760,6 +1189,14 @@ def _main(argv: Optional[List[str]] = None) -> int:
                              "before planning/executing")
     parser.add_argument("--json", action="store_true",
                         help="emit a final JSON summary (incl. run record) on stdout")
+    parser.add_argument("--record-out", type=Path, default=None,
+                        help="write a stable run artifact JSON with plan and run record only")
+    parser.add_argument("--approve", action="append", default=[],
+                        help="approve a requires_approval step/action by id, block name, or 'all'")
+    parser.add_argument("--run-id", default=None,
+                        help="stable run id for state/log artifacts (default: timestamp + process id)")
+    parser.add_argument("--state-dir", type=Path, default=None,
+                        help="write local state/log artifacts under this directory")
     args = parser.parse_args(argv)
 
     path = Path(args.flow).expanduser().resolve()
@@ -788,10 +1225,74 @@ def _main(argv: Optional[List[str]] = None) -> int:
     print(f"  mode    = {'DRY RUN' if args.dry_run else 'EXECUTE'}")
     print(f"  llm_cli = {shutil.which('phantom') or '<not installed>'}")
 
+    approvals = set(args.approve or [])
+    run_id = args.run_id or _default_run_id()
+
     try:
-        summary = run_flow(flow, dry_run=args.dry_run, strict=args.strict)
+        summary = run_flow(
+            flow,
+            dry_run=args.dry_run,
+            strict=args.strict,
+            approvals=approvals,
+            run_id=run_id,
+        )
+    except ApprovalRequiredError as exc:
+        print(f"error: approval required: {exc}", file=sys.stderr)
+        error_text = str(exc)
+        summary = {
+            "name": exc.record.name,
+            "dry_run": args.dry_run,
+            "record": exc.record,
+            "plan": exc.plan,
+        }
+        if args.record_out:
+            artifact = build_run_artifact(
+                summary,
+                flow_path=path,
+                error=error_text,
+            )
+            write_run_artifact(args.record_out, artifact)
+        if args.state_dir:
+            write_state_artifacts(
+                args.state_dir,
+                build_state_artifact(
+                    summary,
+                    run_id=run_id,
+                    flow_path=path,
+                    approvals=approvals,
+                    error=error_text,
+                ),
+            )
+        if args.json:
+            print(json.dumps({"record": exc.record.to_dict()}, indent=2))
+        return 3
     except FlowExecutionError as exc:
         print(f"error: flow execution failed: {exc}", file=sys.stderr)
+        error_text = str(exc)
+        summary = {
+            "name": exc.record.name,
+            "dry_run": args.dry_run,
+            "record": exc.record,
+            "plan": exc.plan,
+        }
+        if args.record_out:
+            artifact = build_run_artifact(
+                summary,
+                flow_path=path,
+                error=error_text,
+            )
+            write_run_artifact(args.record_out, artifact)
+        if args.state_dir:
+            write_state_artifacts(
+                args.state_dir,
+                build_state_artifact(
+                    summary,
+                    run_id=run_id,
+                    flow_path=path,
+                    approvals=approvals,
+                    error=error_text,
+                ),
+            )
         if args.json:
             print(json.dumps({"record": exc.record.to_dict()}, indent=2))
         return 1
@@ -811,6 +1312,23 @@ def _main(argv: Optional[List[str]] = None) -> int:
                           "dry_run": summary["dry_run"],
                           "record": summary["record"].to_dict(),
                           "context": safe_ctx}, indent=2))
+
+    if args.record_out:
+        write_run_artifact(
+            args.record_out,
+            build_run_artifact(summary, flow_path=path),
+        )
+
+    if args.state_dir:
+        write_state_artifacts(
+            args.state_dir,
+            build_state_artifact(
+                summary,
+                run_id=run_id,
+                flow_path=path,
+                approvals=approvals,
+            ),
+        )
 
     return 0
 

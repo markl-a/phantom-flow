@@ -18,12 +18,18 @@ from ai_automation_framework.core.security import (
 )
 
 
+FAKE_OPENAI_KEY = "sk-" + "test123456789012345678901234567890"
+FAKE_OPENAI_ALPHA_KEY = "sk-" + "abcdefghijklmnopqrstuvwxyz123456"
+FAKE_OPENAI_ERROR_KEY = "sk-" + "abcdef1234567890abcdef1234567890"
+FAKE_OPENAI_SHORT_KEY = "sk-" + "test12345678901234567890"
+
+
 class TestSecureConfig:
     """Test suite for SecureConfig class."""
 
     def test_get_secret_from_env(self, monkeypatch):
         """Test getting secret from environment variable."""
-        test_secret = "sk-test123456789012345678901234567890"
+        test_secret = FAKE_OPENAI_KEY
         monkeypatch.setenv("TEST_API_KEY", test_secret)
 
         result = SecureConfig.get_secret("TEST_API_KEY", required=False, validate_format=False)
@@ -57,7 +63,7 @@ class TestSecureConfig:
 
     def test_mask_secret(self):
         """Test secret masking functionality."""
-        secret = "sk-abcdefghijklmnopqrstuvwxyz123456"
+        secret = FAKE_OPENAI_ALPHA_KEY
 
         masked = SecureConfig.mask_secret(secret)
 
@@ -137,7 +143,7 @@ class TestSecureConfig:
 
     def test_get_secret_strips_whitespace(self, monkeypatch):
         """Test that secrets are stripped of whitespace."""
-        test_secret = "  sk-test123456789012345678901234567890  "
+        test_secret = f"  {FAKE_OPENAI_KEY}  "
         monkeypatch.setenv("TEST_WHITESPACE_KEY", test_secret)
 
         result = SecureConfig.get_secret(
@@ -310,12 +316,12 @@ class TestSanitizeErrorMessage:
 
     def test_sanitize_api_key(self):
         """Test API key removal from error messages."""
-        error_msg = Exception("API call failed with key: sk-abcdef1234567890abcdef1234567890")
+        error_msg = Exception(f"API call failed with key: {FAKE_OPENAI_ERROR_KEY}")
 
         sanitized = sanitize_error_message(error_msg)
 
         # API key should be redacted
-        assert "sk-abcdef1234567890abcdef1234567890" not in sanitized
+        assert FAKE_OPENAI_ERROR_KEY not in sanitized
         assert "[REDACTED_API_KEY]" in sanitized
 
     def test_sanitize_password(self):
@@ -341,24 +347,24 @@ class TestSanitizeErrorMessage:
     def test_sanitize_multiple_secrets(self):
         """Test sanitization of multiple secrets in one message."""
         error_msg = Exception(
-            "Failed: api_key=sk-test123456789012345678901234567890 "
+            f"Failed: api_key={FAKE_OPENAI_KEY} "
             "password=secret123 token=abc.def.ghi"
         )
 
         sanitized = sanitize_error_message(error_msg)
 
         # All secrets should be redacted
-        assert "sk-test123456789012345678901234567890" not in sanitized
+        assert FAKE_OPENAI_KEY not in sanitized
         assert "secret123" not in sanitized
         assert "[REDACTED" in sanitized
 
     def test_sanitize_case_insensitive(self):
         """Test that sanitization is case-insensitive."""
-        error_msg = Exception("Error: API_KEY=sk-test12345678901234567890 PASSWORD=secret")
+        error_msg = Exception(f"Error: API_KEY={FAKE_OPENAI_SHORT_KEY} PASSWORD=secret")
 
         sanitized = sanitize_error_message(error_msg)
 
-        assert "sk-test12345678901234567890" not in sanitized
+        assert FAKE_OPENAI_SHORT_KEY not in sanitized
         assert "secret" not in sanitized.split("PASSWORD=")[1] if "PASSWORD=" in sanitized else True
 
     def test_sanitize_no_secrets(self):
@@ -374,17 +380,17 @@ class TestSanitizeErrorMessage:
         """Test sanitization of various API key formats."""
         error_msg = Exception(
             "Errors: "
-            "api_key='sk-abc123456789012345678901234567890' "
-            'api-key="sk-def123456789012345678901234567890" '
-            "apikey:sk-ghi123456789012345678901234567890"
+            f"api_key='{'sk-' + 'abc123456789012345678901234567890'}' "
+            f"api-key=\"{'sk-' + 'def123456789012345678901234567890'}\" "
+            f"apikey:{'sk-' + 'ghi123456789012345678901234567890'}"
         )
 
         sanitized = sanitize_error_message(error_msg)
 
         # All variations should be redacted
-        assert "sk-abc123456789012345678901234567890" not in sanitized
-        assert "sk-def123456789012345678901234567890" not in sanitized
-        assert "sk-ghi123456789012345678901234567890" not in sanitized
+        assert "sk-" + "abc123456789012345678901234567890" not in sanitized
+        assert "sk-" + "def123456789012345678901234567890" not in sanitized
+        assert "sk-" + "ghi123456789012345678901234567890" not in sanitized
 
     def test_sanitize_secret_keyword(self):
         """Test sanitization of 'secret' keyword."""

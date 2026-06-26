@@ -10,6 +10,7 @@ from __future__ import annotations
 import phantom_flow.runner as runner
 from phantom_flow.runner import (
     BLOCK_REGISTRY,
+    FlowExecutionError,
     _gate_passes,
     _lookup,
     _resolve,
@@ -89,10 +90,12 @@ def test_execute_unknown_block_raises():
     flow = {"pipeline": [{"id": "x", "block": "pipeline.does_not_exist"}]}
     try:
         run_flow(flow, dry_run=False)
-    except KeyError as exc:
+    except FlowExecutionError as exc:
         assert "does_not_exist" in str(exc)
+        assert exc.record.status == "error"
+        assert exc.record.steps[0].status == "error"
     else:  # pragma: no cover
-        raise AssertionError("expected KeyError for unknown block")
+        raise AssertionError("expected FlowExecutionError for unknown block")
 
 
 # ---------- strict dry-run validation (new) ----------

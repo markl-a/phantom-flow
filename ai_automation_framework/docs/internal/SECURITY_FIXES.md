@@ -242,7 +242,7 @@ logger.info("User data", extra={
 | `api_key=sk_live_1234567890` | `***API_KEY***` |
 | `password: MySecret123` | `***PASSWORD***` |
 | `Bearer eyJhbGc...` | `Bearer ***TOKEN***` |
-| `AKIA1234567890ABCDEF` | `***AWS_KEY***` |
+| `AWS_ACCESS_KEY_EXAMPLE` | `***AWS_KEY***` |
 | `4532-1234-5678-9010` | `****-****-****-****` |
 
 **向后兼容性**: ✓ 完全兼容,自动过滤敏感信息

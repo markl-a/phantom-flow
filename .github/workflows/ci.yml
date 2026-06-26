@@ -18,6 +18,8 @@ jobs:
         run: python -c "from phantom_flow.runner import load_flow, run_flow; print('phantom-flow runner import ok')"
       - name: engine test suite (hermetic / offline)
         run: python -m pytest -ra -q
+      - name: release-prep gate
+        run: python -m pytest tests/test_release_prep_contract.py -q
       - name: lint flows with strict dry-run
         run: |
           for f in flows/*.yaml; do
