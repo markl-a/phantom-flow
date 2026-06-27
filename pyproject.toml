@@ -11,6 +11,19 @@ requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Mark Lai" }]
 keywords = ["workflow", "yaml", "automation", "local-first", "phantom-mesh"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: Utilities",
+]
 
 # CORE runtime deps only — the engine is intentionally near-stdlib.
 # PyYAML (flow parsing) is the single hard dependency.
@@ -18,12 +31,18 @@ dependencies = [
     "PyYAML>=6.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/markl-a/phantom-flow"
+Documentation = "https://github.com/markl-a/phantom-flow/tree/main/docs"
+Issues = "https://github.com/markl-a/phantom-flow/issues"
+Source = "https://github.com/markl-a/phantom-flow"
+
 [project.optional-dependencies]
 # YouTube transcript fetching is optional; the youtube-summarize flow falls
 # back to a bundled cached transcript when this is not installed.
 youtube = ["youtube-transcript-api>=0.6"]
 # Test tooling.
-dev = ["pytest>=7"]
+dev = ["pytest>=7", "ruff>=0.6"]
 
 [project.scripts]
 phantom-flow = "phantom_flow.runner:_main"

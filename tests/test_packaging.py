@@ -12,6 +12,8 @@ import sys
 import tomllib  # py3.11+
 from pathlib import Path
 
+import phantom_flow
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -56,12 +58,35 @@ def test_pyproject_core_dependencies_match():
     assert pyproject.exists(), "root pyproject.toml must exist"
     data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
     project = data["project"]
+    assert project["name"] == "phantom-flow"
+    assert project["version"] == phantom_flow.__version__
+    assert project["license"]["text"] == "Apache-2.0"
+    assert project["requires-python"] == ">=3.11"
+    assert project["readme"] == "README.md"
+    assert project["authors"] == [{"name": "Mark Lai"}]
+
     deps = {_dist_name(d) for d in project.get("dependencies", [])}
     assert deps == {"pyyaml"}, f"core dependencies must be just pyyaml, got {deps}"
+
+    classifiers = set(project["classifiers"])
+    assert "Development Status :: 3 - Alpha" in classifiers
+    assert "License :: OSI Approved :: Apache Software License" in classifiers
+    assert "Programming Language :: Python :: 3.11" in classifiers
+    assert "Topic :: System :: Distributed Computing" in classifiers
+
+    urls = project["urls"]
+    assert urls["Homepage"].endswith("/phantom-flow")
+    assert urls["Documentation"].endswith("/phantom-flow/tree/main/docs")
+    assert urls["Issues"].endswith("/phantom-flow/issues")
+    assert urls["Source"].endswith("/phantom-flow")
+
     # youtube fetching is genuinely optional -> lives in an extra, not core.
     extras = project.get("optional-dependencies", {})
     yt = {_dist_name(d) for grp in extras.values() for d in grp}
     assert "youtube-transcript-api" in yt
+    assert "pytest" in {_dist_name(d) for d in extras["dev"]}
+    assert "ruff" in {_dist_name(d) for d in extras["dev"]}
+    assert project["scripts"]["phantom-flow"] == "phantom_flow.runner:_main"
 
 
 def test_all_engine_imports_resolve():

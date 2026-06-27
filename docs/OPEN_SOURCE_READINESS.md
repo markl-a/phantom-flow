@@ -162,3 +162,25 @@ Evidence:
 - `python -m pytest -q`: 93 passed.
 
 Remaining P4 work: none for the approved release-candidate tag.
+
+## P4 Release-Prep Slice 5
+
+Status: current release-candidate verification refreshed for package metadata, CI, wheel, core engine lint, deterministic public scenario smoke, and secret scan.
+
+Evidence:
+- `pyproject.toml` declares Apache-2.0 metadata, Python classifiers, project URLs, and `dev` verification extra.
+- `.github/workflows/ci.yml` installs `.[dev]`, builds a wheel, runs `ruff` over `phantom_flow` and `tests`, runs the full test suite, runs deterministic public scenario smoke, and runs the release-prep gate.
+- `tests/test_packaging.py` verifies package metadata, core dependency limits, extras, and the `phantom-flow` CLI entrypoint target.
+- `tests/test_release_prep_contract.py` verifies CI release gates and current audit evidence.
+- `python -m pip install -e . --dry-run --no-deps`: passed; would install `phantom-flow-0.1.0a0`.
+- `python -m pip wheel . --no-deps -w <temp>`: passed; built `phantom_flow-0.1.0a0-py3-none-any.whl`.
+- `python -m phantom_flow.runner --help`: passed.
+- Deterministic public scenario smoke: passed; `scenario-summary.json` schema version 1, blocked phase exit code 3, approved phase status `ok`, and run artifacts omit `context`.
+- `python -m ruff check phantom_flow tests`: passed; staged subtrees excluded from core lint because they are not part of the installable release surface.
+- `python -m pytest -q`: passed; 93 tests passed.
+- Root `python .\run_phantom_satellite_usage_smoke.py`: passed; 10/10 projects OK.
+- Root `python .\run_phantom_agent_compat_smoke.py`: passed; 40/40 invocations OK.
+- Root `python -m pytest .\tests -q`: passed; 85 tests passed.
+- High-confidence secret scan: `high_conf_secret_hits=0`.
+
+Remaining P4 work: none for this public source release candidate.

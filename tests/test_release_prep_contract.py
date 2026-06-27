@@ -30,8 +30,12 @@ def test_release_checklist_documents_final_gate_without_claiming_release_ready()
     checklist = _read("docs/RELEASE_CHECKLIST.md")
     combined = f"{changelog}\n{checklist}".lower()
 
+    assert "0.1.0-alpha.0" in changelog
     assert "release-candidate tag" in combined
     assert "python -m pytest -q" in checklist
+    assert "python -m pip install -e . --dry-run --no-deps" in checklist
+    assert "python -m pip wheel . --no-deps" in checklist
+    assert "python -m ruff check phantom_flow tests" in checklist
     assert "docs/open_source_readiness.md" in combined
     assert "dependency/license review" in combined
     assert "secret" in combined
@@ -45,10 +49,15 @@ def test_final_release_audit_records_scan_dependency_review_and_blockers() -> No
     audit = _read("docs/FINAL_RELEASE_AUDIT.md")
     low = audit.lower()
 
+    assert "Date: 2026-06-27" in audit
     assert "high_conf_secret_hits=0" in audit
     assert "dependency/license review" in low
     assert "direct default release-scope dependency/license review result: pass" in low
     assert "release candidate approved and tagged" in low
+    assert "python -m pip install -e . --dry-run --no-deps" in audit
+    assert "python -m pip wheel . --no-deps" in audit
+    assert "python -m ruff check phantom_flow tests" in audit
+    assert "staged subtrees excluded from core lint" in low
     assert "manual maintainer approval is recorded" in low
     assert "Apache-2.0" in audit
 
@@ -77,5 +86,11 @@ def test_release_notes_tag_plan_and_approval_gate_are_documented() -> None:
 def test_ci_runs_release_prep_gate() -> None:
     workflow = _read(".github/workflows/ci.yml")
 
+    assert "python -m pip install -e .[dev]" in workflow
+    assert "python -m pip wheel . --no-deps" in workflow
+    assert "python -m ruff check phantom_flow tests" in workflow
+    assert "deterministic public scenario smoke" in workflow
+    assert "scenario-summary.json" in workflow
+    assert "context\" not in artifact" in workflow
     assert "release-prep gate" in workflow
     assert "python -m pytest tests/test_release_prep_contract.py -q" in workflow

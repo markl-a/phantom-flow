@@ -12,12 +12,40 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      # CORE deps only — the engine is near-stdlib (see requirements.txt).
-      - run: pip install -r requirements.txt pytest
+      # CORE package surface only; staged subtrees are not part of this wheel.
+      - run: python -m pip install -e .[dev]
+      - name: build wheel
+        run: python -m pip wheel . --no-deps -w /tmp/phantom-flow-wheel
       - name: import smoke
         run: python -c "from phantom_flow.runner import load_flow, run_flow; print('phantom-flow runner import ok')"
+      - name: engine lint
+        run: python -m ruff check phantom_flow tests
       - name: engine test suite (hermetic / offline)
         run: python -m pytest -ra -q
+      - name: deterministic public scenario smoke
+        run: |
+          python -m phantom_flow.runner --help
+          python -m phantom_flow.runner scenario flows/examples/local-automation-scenario.yaml --out-dir /tmp/phantom-flow-scenario --run-id-prefix ci-public-smoke
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          out = Path("/tmp/phantom-flow-scenario")
+          summary = json.loads((out / "scenario-summary.json").read_text(encoding="utf-8"))
+          plan = json.loads((out / "plan.json").read_text(encoding="utf-8"))
+          blocked = json.loads((out / "blocked.json").read_text(encoding="utf-8"))
+          approved = json.loads((out / "approved.json").read_text(encoding="utf-8"))
+
+          assert summary["schema_version"] == 1
+          assert summary["status"] == "ok"
+          assert summary["phase_results"]["blocked"]["exit_code"] == 3
+          assert summary["phase_results"]["approved"]["record_status"] == "ok"
+          for artifact in (plan, blocked, approved):
+              assert "context" not in artifact
+              assert artifact["schema_version"] == 1
+          assert (out / "scenario.log").exists()
+          assert (out / "stdout.log").exists()
+          PY
       - name: release-prep gate
         run: python -m pytest tests/test_release_prep_contract.py -q
       - name: lint flows with strict dry-run

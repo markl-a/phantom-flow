@@ -9,6 +9,7 @@ Status: release candidate approved and tagged.
 - Local-first public demo path documented in `README.md`.
 - P3 scenario proof artifacts documented and tested.
 - P4 governance, security, release checklist, changelog, and final audit documents.
+- Package metadata, wheel build, core engine lint, CI release gate, and deterministic public scenario smoke coverage.
 - High-confidence secret scan recorded as `high_conf_secret_hits=0`.
 - Direct dependency/license review recorded in `docs/FINAL_RELEASE_AUDIT.md`.
 

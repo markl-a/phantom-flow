@@ -16,7 +16,6 @@ All tests are hermetic: no network, no real `phantom` CLI is ever spawned.
 from __future__ import annotations
 
 import phantom_flow.llm_driver as drv
-import phantom_flow.runner as runner
 from phantom_flow.runner import run_flow
 
 

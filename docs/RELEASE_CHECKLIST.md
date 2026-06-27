@@ -5,6 +5,10 @@ Status: release-prep complete for approved public source release candidate.
 Completed before local release-candidate tag creation:
 
 - Run `python -m pytest -q` and record the result in `docs/OPEN_SOURCE_READINESS.md`.
+- Run `python -m pip install -e . --dry-run --no-deps`.
+- Run `python -m pip wheel . --no-deps -w <temp>`.
+- Run `python -m ruff check phantom_flow tests`.
+- Run the deterministic public scenario smoke and verify `scenario-summary.json`, run artifacts, and no `context` leakage.
 - Confirm `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`, and `CHANGELOG.md` are present.
 - Complete a dependency/license review and document any incompatible license risk.
 - Run a final secret and private data scan; public artifacts must contain no credentials, no private data, and no raw production logs.
