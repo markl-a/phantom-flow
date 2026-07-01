@@ -67,6 +67,34 @@ def test_validate_flow_rejects_bad_trigger_type():
         raise AssertionError("unknown trigger type must raise")
 
 
+def test_validate_flow_requires_schedule_for_cron_trigger():
+    flow = _valid_flow()
+    del flow["trigger"]["schedule"]
+    try:
+        validate_flow(flow)
+    except FlowValidationError as exc:
+        assert "schedule" in str(exc).lower()
+    else:
+        raise AssertionError("cron trigger without schedule must raise")
+
+
+def test_validate_flow_requires_url_for_webhook_trigger():
+    flow = _valid_flow()
+    flow["trigger"] = {"type": "webhook"}
+    try:
+        validate_flow(flow)
+    except FlowValidationError as exc:
+        assert "url" in str(exc).lower()
+    else:
+        raise AssertionError("webhook trigger without url must raise")
+
+
+def test_validate_flow_accepts_webhook_with_url():
+    flow = _valid_flow()
+    flow["trigger"] = {"type": "webhook", "url": "https://example.com/hook"}
+    assert validate_flow(flow) is flow
+
+
 def test_validate_flow_requires_pipeline_list():
     flow = _valid_flow()
     flow["pipeline"] = "not-a-list"

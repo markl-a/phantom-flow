@@ -274,6 +274,14 @@ def validate_flow(flow: Any) -> Dict[str, Any]:
                     f"flow.trigger.type {ttype!r} is not one of "
                     f"{sorted(VALID_TRIGGER_TYPES)}"
                 )
+            if ttype == "cron" and not trigger.get("schedule"):
+                errors.append(
+                    "flow.trigger.schedule is required when trigger.type == 'cron'"
+                )
+            if ttype == "webhook" and not trigger.get("url"):
+                errors.append(
+                    "flow.trigger.url is required when trigger.type == 'webhook'"
+                )
 
     pipeline = flow.get("pipeline", [])
     if not isinstance(pipeline, list):
