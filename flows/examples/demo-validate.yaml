@@ -1,0 +1,48 @@
+name: demo-validate
+version: 1
+description: |
+  Self-contained flow used by `phantom-flow demo-validate`. It exercises the
+  full flow shape — a cron trigger, a multi-block pipeline, and an
+  approval-gated outbound write — so schema validation + a dry-run PLAN have
+  something real to chew on with NO external arguments. It is only ever
+  validated + dry-run-planned by that command (never executed), so it needs no
+  network, no sample file, and no secrets.
+
+trigger:
+  type: cron
+  schedule: "0 9 * * 1-5"   # 09:00 on weekdays
+
+pipeline:
+  - id: fetch
+    block: tools.http_get
+    url: "https://example.com/changelog.txt"   # never fetched — this flow is only validated + dry-run-planned
+    max_bytes: 4096
+    timeout: 15
+
+  - id: count
+    block: pipeline.regex_count
+    input: "${fetch.body}"
+    pattern: "TODO"
+
+  - id: gate
+    block: pipeline.if
+    condition: "${count.value} > 0"
+
+  - id: digest
+    block: pipeline.llm_summarize
+    input: "${fetch.body}"
+    prompt: "Summarise the changed items in 2 short bullets:"
+    force_stub: true
+
+outbound:
+  - id: write_report
+    block: actions.log_append
+    when: "${gate.true}"
+    requires_approval: true
+    risk_reason: writes a local report file (side effect, gated)
+    path: "${env.PHANTOM_FLOW_DEMO_LOG}"
+    line: "[demo-validate] TODO hits=${count.value} digest=${digest.backend}"
+
+  - id: announce
+    block: actions.stdout
+    line: "demo-validate planned: ${digest.summary}"

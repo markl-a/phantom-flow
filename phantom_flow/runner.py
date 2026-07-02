@@ -1040,6 +1040,69 @@ def _scenario_main(argv: List[str]) -> int:
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0 if ok else 1
 
+def _demo_validate_main(argv: List[str]) -> int:
+    """Self-contained validate + dry-run-PLAN demo (no external args required).
+
+    Loads a BUNDLED example flow (``flows/examples/demo-validate.yaml``), runs
+    full schema validation, then a strict dry-run so every block name is
+    checked against the registry without touching the network / an LLM / the
+    filesystem, and prints a JSON validation+plan summary. Exits 0 on a valid,
+    fully-resolvable flow.
+    """
+    root = _repo_root()
+    default_flow = root / "flows" / "examples" / "demo-validate.yaml"
+    parser = argparse.ArgumentParser(
+        prog="phantom-flow demo-validate",
+        description="Validate + dry-run-PLAN a bundled example flow and print a JSON summary.",
+    )
+    parser.add_argument("flow", nargs="?", default=str(default_flow),
+                        help="flow YAML to validate + plan (default: bundled demo flow)")
+    args = parser.parse_args(argv)
+
+    flow_path = Path(args.flow).expanduser().resolve()
+    if not flow_path.exists():
+        print(f"error: flow file not found: {flow_path}", file=sys.stderr)
+        return 2
+
+    try:
+        flow = load_flow(flow_path)
+    except Exception as exc:  # pragma: no cover - load/parse failure
+        print(f"error: failed to load {flow_path}: {exc}", file=sys.stderr)
+        return 2
+
+    validation_errors: List[str] = []
+    try:
+        validate_flow(flow)
+    except FlowValidationError as exc:
+        validation_errors = list(exc.errors)
+
+    try:
+        # strict dry-run: PLAN only, but assert every block resolves.
+        summary = run_flow(flow, dry_run=True, strict=True)
+    except KeyError as exc:
+        validation_errors.append(f"unknown block: {exc}")
+        summary = None
+
+    ok = not validation_errors and summary is not None
+    approval_gates = _approval_gate_ids(flow)
+    out = {
+        "schema_version": 1,
+        "command": "demo-validate",
+        "status": "ok" if ok else "error",
+        "flow": {"name": flow.get("name", "?"), "file": flow_path.name},
+        "validation": {
+            "valid": not validation_errors,
+            "errors": validation_errors,
+        },
+        "dry_run": True,
+        "approval_gates": approval_gates,
+        "plan": list(summary["plan"]) if summary else [],
+        "record": summary["record"].to_dict() if summary else None,
+    }
+    print(json.dumps(out, indent=2, sort_keys=True))
+    return 0 if ok else 1
+
+
 def _flow_webhook_path(flow):
     """Return the flow's webhook trigger URL path, or None if the flow is not a webhook flow."""
     trigger = flow.get("trigger", {})
@@ -1179,11 +1242,14 @@ def _main(argv: Optional[List[str]] = None) -> int:
         return _schedule_main(argv[1:])
     if argv and argv[0] == "scenario":
         return _scenario_main(argv[1:])
+    if argv and argv[0] == "demo-validate":
+        return _demo_validate_main(argv[1:])
 
     parser = argparse.ArgumentParser(
         prog="phantom_flow.runner",
         description=(
-            "Minimal YAML flow executor. Subcommands: serve, schedule, scenario."
+            "Minimal YAML flow executor. Subcommands: serve, schedule, "
+            "scenario, demo-validate."
         ),
     )
     parser.add_argument("flow", help="path to flow YAML")
