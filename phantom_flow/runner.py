@@ -49,6 +49,11 @@ try:
 except ImportError:  # pragma: no cover - keep dry-run usable without PyYAML
     yaml = None
 
+# Mesh activity reporter: a real (non-dry-run) flow execution flips THIS node
+# to "executing" in the process-wide registry, so the satellite surfaces in the
+# phantom-mesh /api/mesh/activity grid; back to idle/error when the run ends.
+from phantom_flow import activity
+
 
 # ---------- schema validation + structured run records (P2-1) ----------
 
@@ -669,105 +674,119 @@ def run_flow(flow: Dict[str, Any], *, dry_run: bool = False,
             run_id=effective_run_id,
         )
 
-    for step in flow.get("pipeline", []):
-        sid = step.get("id") or step.get("block", "?")
-        block_name = step.get("block", "?")
-        needs_approval = _approval_needed(step)
-        plan.append(
-            f"pipeline.{sid} -> {block_name}"
-            + (" [requires approval]" if needs_approval else "")
-        )
-        if strict and block_name not in BLOCK_REGISTRY:
-            raise KeyError(f"unknown block: {block_name}")
-        if dry_run:
-            continue
-        fn = BLOCK_REGISTRY.get(block_name)
-        if fn is None:
-            safe_error = f"unknown block: {block_name}"
-            steps.append(StepRecord(id=str(sid), block=block_name, status="error",
-                                    error=safe_error))
-            raise FlowExecutionError(
-                f"pipeline step {sid!r} ({block_name}) failed: {safe_error}",
-                _finish("error"),
-                plan,
+    # Mesh activity: a REAL (non-dry-run) execution flips this node to
+    # "executing" with the flow name as the task label; dry-runs (planning
+    # only) are not "work" and are not reported. `_run_ok` stays False until we
+    # reach the clean return, so any raise (execution/approval error) makes the
+    # `finally` fall back to "error".
+    _tracking = not dry_run
+    if _tracking:
+        activity.registry().begin(str(flow.get("name", "?")), tool="phantom-flow")
+    _run_ok = False
+    try:
+        for step in flow.get("pipeline", []):
+            sid = step.get("id") or step.get("block", "?")
+            block_name = step.get("block", "?")
+            needs_approval = _approval_needed(step)
+            plan.append(
+                f"pipeline.{sid} -> {block_name}"
+                + (" [requires approval]" if needs_approval else "")
             )
-        if needs_approval and not _approval_allowed(str(sid), block_name, approved):
-            safe_error = _approval_error(str(sid), block_name, step.get("risk_reason"))
-            steps.append(StepRecord(id=str(sid), block=block_name, status="blocked",
-                                    error=safe_error))
-            raise ApprovalRequiredError(
-                f"pipeline step {sid!r} ({block_name}) blocked: {safe_error}",
-                _finish("blocked"),
-                plan,
-            )
-        spec = _resolve({k: v for k, v in step.items()
-                         if k not in {"id", "block", "requires_approval",
-                                      "risk_reason"}}, ctx)
-        try:
-            ctx[sid] = fn(spec, ctx)
-        except Exception as exc:  # noqa: BLE001 - record then re-surface
-            safe_error = _safe_exception_text(exc)
-            steps.append(StepRecord(id=sid, block=block_name, status="error",
-                                    error=safe_error))
-            raise FlowExecutionError(
-                f"pipeline step {sid!r} ({block_name}) failed: {safe_error}",
-                _finish("error"),
-                plan,
-            ) from exc
-        steps.append(StepRecord(id=sid, block=block_name, status="ok"))
+            if strict and block_name not in BLOCK_REGISTRY:
+                raise KeyError(f"unknown block: {block_name}")
+            if dry_run:
+                continue
+            fn = BLOCK_REGISTRY.get(block_name)
+            if fn is None:
+                safe_error = f"unknown block: {block_name}"
+                steps.append(StepRecord(id=str(sid), block=block_name, status="error",
+                                        error=safe_error))
+                raise FlowExecutionError(
+                    f"pipeline step {sid!r} ({block_name}) failed: {safe_error}",
+                    _finish("error"),
+                    plan,
+                )
+            if needs_approval and not _approval_allowed(str(sid), block_name, approved):
+                safe_error = _approval_error(str(sid), block_name, step.get("risk_reason"))
+                steps.append(StepRecord(id=str(sid), block=block_name, status="blocked",
+                                        error=safe_error))
+                raise ApprovalRequiredError(
+                    f"pipeline step {sid!r} ({block_name}) blocked: {safe_error}",
+                    _finish("blocked"),
+                    plan,
+                )
+            spec = _resolve({k: v for k, v in step.items()
+                             if k not in {"id", "block", "requires_approval",
+                                          "risk_reason"}}, ctx)
+            try:
+                ctx[sid] = fn(spec, ctx)
+            except Exception as exc:  # noqa: BLE001 - record then re-surface
+                safe_error = _safe_exception_text(exc)
+                steps.append(StepRecord(id=sid, block=block_name, status="error",
+                                        error=safe_error))
+                raise FlowExecutionError(
+                    f"pipeline step {sid!r} ({block_name}) failed: {safe_error}",
+                    _finish("error"),
+                    plan,
+                ) from exc
+            steps.append(StepRecord(id=sid, block=block_name, status="ok"))
 
-    for action in flow.get("outbound", []):
-        action_id = str(action.get("id") or f"outbound:{action.get('block', '?')}")
-        block_name = action.get("block", "?")
-        when = action.get("when")
-        needs_approval = _approval_needed(action)
-        plan.append(f"outbound -> {block_name}"
-                    + (f"  [gated by {when}]" if when else "")
-                    + (" [requires approval]" if needs_approval else ""))
-        if strict and block_name not in BLOCK_REGISTRY:
-            raise KeyError(f"unknown action: {block_name}")
-        if dry_run:
-            continue
-        if not _gate_passes(when, ctx):
-            continue
-        fn = BLOCK_REGISTRY.get(block_name)
-        if fn is None:
-            safe_error = f"unknown action: {block_name}"
-            steps.append(StepRecord(id=action_id, block=block_name,
-                                    status="error", error=safe_error))
-            raise FlowExecutionError(
-                f"outbound action {block_name} failed: {safe_error}",
-                _finish("error"),
-                plan,
-            )
-        if needs_approval and not _approval_allowed(action_id, block_name, approved):
-            safe_error = _approval_error(action_id, block_name, action.get("risk_reason"))
-            steps.append(StepRecord(id=action_id, block=block_name, status="blocked",
-                                    error=safe_error))
-            raise ApprovalRequiredError(
-                f"outbound action {block_name} blocked: {safe_error}",
-                _finish("blocked"),
-                plan,
-            )
-        spec = _resolve({k: v for k, v in action.items()
-                         if k not in {"id", "block", "when",
-                                      "requires_approval", "risk_reason"}}, ctx)
-        try:
-            fn(spec, ctx)
-        except Exception as exc:  # noqa: BLE001 - record then re-surface
-            safe_error = _safe_exception_text(exc)
-            steps.append(StepRecord(id=action_id, block=block_name, status="error",
-                                    error=safe_error))
-            raise FlowExecutionError(
-                f"outbound action {block_name} failed: {safe_error}",
-                _finish("error"),
-                plan,
-            ) from exc
-        steps.append(StepRecord(id=action_id, block=block_name, status="ok"))
+        for action in flow.get("outbound", []):
+            action_id = str(action.get("id") or f"outbound:{action.get('block', '?')}")
+            block_name = action.get("block", "?")
+            when = action.get("when")
+            needs_approval = _approval_needed(action)
+            plan.append(f"outbound -> {block_name}"
+                        + (f"  [gated by {when}]" if when else "")
+                        + (" [requires approval]" if needs_approval else ""))
+            if strict and block_name not in BLOCK_REGISTRY:
+                raise KeyError(f"unknown action: {block_name}")
+            if dry_run:
+                continue
+            if not _gate_passes(when, ctx):
+                continue
+            fn = BLOCK_REGISTRY.get(block_name)
+            if fn is None:
+                safe_error = f"unknown action: {block_name}"
+                steps.append(StepRecord(id=action_id, block=block_name,
+                                        status="error", error=safe_error))
+                raise FlowExecutionError(
+                    f"outbound action {block_name} failed: {safe_error}",
+                    _finish("error"),
+                    plan,
+                )
+            if needs_approval and not _approval_allowed(action_id, block_name, approved):
+                safe_error = _approval_error(action_id, block_name, action.get("risk_reason"))
+                steps.append(StepRecord(id=action_id, block=block_name, status="blocked",
+                                        error=safe_error))
+                raise ApprovalRequiredError(
+                    f"outbound action {block_name} blocked: {safe_error}",
+                    _finish("blocked"),
+                    plan,
+                )
+            spec = _resolve({k: v for k, v in action.items()
+                             if k not in {"id", "block", "when",
+                                          "requires_approval", "risk_reason"}}, ctx)
+            try:
+                fn(spec, ctx)
+            except Exception as exc:  # noqa: BLE001 - record then re-surface
+                safe_error = _safe_exception_text(exc)
+                steps.append(StepRecord(id=action_id, block=block_name, status="error",
+                                        error=safe_error))
+                raise FlowExecutionError(
+                    f"outbound action {block_name} failed: {safe_error}",
+                    _finish("error"),
+                    plan,
+                ) from exc
+            steps.append(StepRecord(id=action_id, block=block_name, status="ok"))
 
-    record = _finish("ok")
-    return {"plan": plan, "context": ctx, "dry_run": dry_run,
-            "name": flow.get("name", "?"), "record": record}
+        record = _finish("ok")
+        _run_ok = True
+        return {"plan": plan, "context": ctx, "dry_run": dry_run,
+                "name": flow.get("name", "?"), "record": record}
+    finally:
+        if _tracking:
+            activity.registry().end(ok=_run_ok)
 
 
 def _cron_field(field: str, lo: int, hi: int) -> set:
@@ -1131,6 +1150,15 @@ def make_webhook_server(flow, host="127.0.0.1", port=0):
             self.end_headers()
             self.wfile.write(data)
 
+        def do_GET(self):
+            # Mesh activity reporter: the running webhook listener also serves
+            # GET /activity so this node surfaces in /api/mesh/activity while it
+            # waits for (and runs) webhook-triggered flows.
+            if self.path.split("?", 1)[0] == "/activity":
+                self._send_json(200, activity.mesh_activity_payload())
+                return
+            self._send_json(404, {"error": "not found", "path": self.path})
+
         def do_POST(self):
             if webhook_path is None or self.path != webhook_path:
                 self._send_json(404, {"error": "no flow mapped to this path",
@@ -1233,11 +1261,26 @@ def _schedule_main(argv):
     return 0
 
 
+def _activity_main(argv):
+    parser = argparse.ArgumentParser(
+        prog="phantom-flow activity",
+        description="Start a stdlib HTTP server exposing GET /activity so this "
+                    "node surfaces in the phantom-mesh /api/mesh/activity grid.",
+    )
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=activity.DEFAULT_ACTIVITY_PORT)
+    args = parser.parse_args(argv)
+    activity.serve_activity(args.host, args.port)
+    return 0
+
+
 def _main(argv: Optional[List[str]] = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     if argv and argv[0] == "serve":
         return _serve_main(argv[1:])
+    if argv and argv[0] == "activity":
+        return _activity_main(argv[1:])
     if argv and argv[0] == "schedule":
         return _schedule_main(argv[1:])
     if argv and argv[0] == "scenario":
@@ -1248,8 +1291,8 @@ def _main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="phantom_flow.runner",
         description=(
-            "Minimal YAML flow executor. Subcommands: serve, schedule, "
-            "scenario, demo-validate."
+            "Minimal YAML flow executor. Subcommands: serve, activity, "
+            "schedule, scenario, demo-validate."
         ),
     )
     parser.add_argument("flow", help="path to flow YAML")
