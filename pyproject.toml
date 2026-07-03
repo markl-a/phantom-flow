@@ -43,9 +43,13 @@ Source = "https://github.com/markl-a/phantom-flow"
 youtube = ["youtube-transcript-api>=0.6"]
 # Test tooling.
 dev = ["pytest>=7", "ruff>=0.6"]
+# MCP server (phantom_flow.mcp_server) the mesh launches — optional so the
+# core YAML engine stays near-stdlib. Install with `pip install .[mcp]`.
+mcp = ["mcp>=1"]
 
 [project.scripts]
 phantom-flow = "phantom_flow.runner:_main"
+phantom-flow-mcp = "phantom_flow.mcp_server:main"
 
 [tool.setuptools]
 # Only the engine package ships; the vendored subtrees are staged sources,
