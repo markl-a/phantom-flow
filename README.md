@@ -3,7 +3,11 @@
 [![CI](https://github.com/markl-a/phantom-flow/actions/workflows/ci.yml/badge.svg)](https://github.com/markl-a/phantom-flow/actions/workflows/ci.yml)
 ![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)
 
-> 極小、local-first、mesh-native 的 YAML 工作流執行器（phantom-mesh 生態系）。近乎純標準函式庫(唯一硬相依 PyYAML)；LLM 步驟可經 phantom-mesh 路由,缺 CLI 則退回決定性 stub。
+> A tiny, local-first YAML workflow runner for the **phantom-mesh** ecosystem — describe an automation as declarative blocks (fetch, filter, LLM-summarize, gate, log), run it fully offline, or expose it to a mesh of AI agents over MCP.
+
+Most workflow engines are heavyweight and cloud-tied. phantom-flow stays **local-first and near-stdlib** — PyYAML is the single hard dependency. Flows run deterministically offline, every run emits a stable JSON artifact, and any side effect can be held behind an explicit approval gate before it leaves your machine. LLM steps route through phantom-mesh when a CLI backend is available and fall back to a deterministic stub otherwise, so tests and demos stay reproducible.
+
+> 極小、local-first、mesh-native 的 YAML 工作流執行器（phantom-mesh 生態系）。近乎純標準函式庫（唯一硬相依 PyYAML）；LLM 步驟可經 phantom-mesh 路由，缺 CLI 則退回決定性 stub。
 
 ## Quickstart
 
@@ -28,6 +32,14 @@ Run the same example end-to-end with no network and a deterministic LLM stub:
 python -m phantom_flow.runner .\flows\examples\local-text-summary.yaml --validate --json --record-out .\artifacts\local-text-summary.run.json
 Remove-Item Env:\PHANTOM_FLOW_SAMPLE
 Remove-Item Env:\PHANTOM_FLOW_STUB_LLM
+```
+
+Expose the engine to the phantom mesh as an MCP server (thin wrapper over the
+same tested runner — adds no new engine behavior):
+
+```powershell
+python -m pip install -e .[mcp]
+python -m phantom_flow.mcp_server   # serves flow_run + flow_list_blocks over JSON-RPC
 ```
 
 Public block inputs, outputs, side effects, and failure behavior are documented
@@ -60,6 +72,35 @@ This writes `plan.json`, `blocked.json`, `approved.json`, `state/`,
 directory. The flow runs offline against the bundled sample fixture, blocks the
 local report write until approval, then reruns with the discovered approval id. See
 [docs/LOCAL_AUTOMATION_SCENARIO.md](docs/LOCAL_AUTOMATION_SCENARIO.md).
+
+## Status
+
+**Shipped and tested** — 124 tests, hermetic and offline, green in CI:
+
+- **Local-first YAML engine** with 9 native blocks — `tools.http_get`,
+  `tools.youtube_transcript`, `pipeline.regex_count`, `pipeline.filter`,
+  `pipeline.if`, `pipeline.subprocess`, `pipeline.llm_summarize`,
+  `actions.log_append`, `actions.stdout`.
+- **`${...}` templating**, all-errors schema validation, and
+  `--dry-run` / `--strict` / `--validate` / `--json` CLI modes.
+- **Structured run artifacts** (`--record-out`) and a local state/event store
+  (`--state-dir`), both with stable, documented schemas.
+- **Approval gating** — steps marked `requires_approval` block before executing
+  until `--approve`; blocked gates exit `3` and still record their artifacts.
+- **LLM steps** route through phantom-mesh when a CLI backend is present, else
+  fall back to a deterministic offline stub.
+- **Triggers** — a stdlib webhook listener (`serve`) and a pure-stdlib cron
+  matcher (`schedule --once`).
+- **`/activity` HTTP reporter** publishing live node status to the mesh.
+- **MCP server** (`python -m phantom_flow.mcp_server`) exposing **`flow_run`**
+  and **`flow_list_blocks`**, so the phantom mesh can drive flows over JSON-RPC.
+
+**Roadmap** (planned direction, not yet shipped): a `pipeline.generate` block
+(image / music / video / TTS via mesh MCP tools), governed outbound-publish
+blocks routed through the phantom-mesh governor + flight-recorder + phone
+approval, a long-running cron daemon, and block adapters over the staged
+`ai_automation_framework/` and `data_analysis/` sources. See
+[ROADMAP.md](ROADMAP.md) and [DESIGN.md](DESIGN.md).
 
 📄 完整文件(定位 / 快速上手 / 狀態 / 開源生態與方向):見 [docs/phantom-flow.md](docs/phantom-flow.md)
 
