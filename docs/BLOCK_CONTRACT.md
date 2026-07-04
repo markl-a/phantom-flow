@@ -39,6 +39,7 @@ exception that writes only the run artifact.
 | `pipeline.regex_count` | `input`, `pattern` | `value`, `pattern` | None | Invalid regex raises during execution |
 | `pipeline.filter` | `input`, `keywords` | `matched`, `matched_count`, `passes` | None | Returns no matches for empty input |
 | `pipeline.llm_summarize` | `input`, optional `prompt`, `force_stub`, `timeout`, `model_hint` | `summary`, `backend`, `error` | May call phantom/LLM unless stubbed; timeout is bounded | Falls back through the LLM driver where configured and reports backend/error |
+| `pipeline.generate` | `prompt` or `input`, optional `tool`, `spec`, generation parameters | `tool`, `kind`, `prompt`, `spec`, `request_id`, `backend`, `output`, `artifact`, `mcp_request` | None; builds a deterministic local manifest only, including under `--dry-run` | Missing prompt/input raises during execution |
 | `pipeline.if` | `condition` | `true`, `false`, `condition` | None | Unsupported or malformed comparisons evaluate false |
 | `pipeline.subprocess` | `cmd`, optional `timeout` | `stdout`, `stderr`, `returncode`, `timed_out` | Runs a bounded local subprocess when not in dry-run | Missing commands, OS errors, and timeouts return structured non-zero results |
 | `actions.log_append` | `path`, `line` | `path`, `appended` | Appends one line to a local file and creates parent directories | Filesystem errors raise and are recorded as action failure |

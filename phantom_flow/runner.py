@@ -53,6 +53,7 @@ except ImportError:  # pragma: no cover - keep dry-run usable without PyYAML
 # to "executing" in the process-wide registry, so the satellite surfaces in the
 # phantom-mesh /api/mesh/activity grid; back to idle/error when the run ends.
 from phantom_flow import activity
+from phantom_flow.blocks.generate import _block_generate
 
 
 # ---------- schema validation + structured run records (P2-1) ----------
@@ -586,6 +587,7 @@ BLOCK_REGISTRY: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, A
     "tools.youtube_transcript": _block_youtube_transcript,
     "pipeline.regex_count": _block_regex_count,
     "pipeline.filter": _block_filter,
+    "pipeline.generate": _block_generate,
     "pipeline.llm_summarize": _block_llm_summarize,
     "pipeline.if": _block_if,
     "pipeline.subprocess": _block_subprocess,
