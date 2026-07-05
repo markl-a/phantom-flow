@@ -39,8 +39,15 @@ same tested runner — adds no new engine behavior):
 
 ```powershell
 python -m pip install -e .[mcp]
+
+# either the module form or the installed console script — same server:
 python -m phantom_flow.mcp_server   # serves flow_run + flow_list_blocks over JSON-RPC
+phantom-flow-mcp
 ```
+
+The `mcp` SDK is an optional extra (`[mcp]`); the core YAML engine stays
+near-stdlib (PyYAML only). For the honest per-module shipped-vs-roadmap status,
+see [FEATURE-AUDIT.md](FEATURE-AUDIT.md).
 
 Public block inputs, outputs, side effects, and failure behavior are documented
 in [docs/BLOCK_CONTRACT.md](docs/BLOCK_CONTRACT.md).
